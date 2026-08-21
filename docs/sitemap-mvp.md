@@ -10,11 +10,11 @@ Per the handoff doc's MVP boundary: roughly 8–12 strong line/vertical landing 
 | `/about` | Team, history, mission, licensed states | `/local-insurance-agent-knoxville-tn` (live nav now points here; content pulled — see `docs/site-audit/content-inventory.md`. Also redirect the old dead `/insurance-agent-knoxville-tn`, still linked from the live footer) |
 | `/contact` | Contact form, phone/text/email, office info | `/insurance-agency-knoxville` |
 | `/claims` | File a claim | `/claims` |
-| `/quote` | AI Lead Warmer entry point (replaces static quote form) | `/insurancequotes` |
+| `/quote` | Quote request entry point — family picker + 6 forms, built and live. Will become the AI Lead Warmer entry point once that ships (Phase 2); replaces the old static quote forms functionally in the meantime | `/insurancequotes` |
 | `/reviews` | Testimonials / review aggregation | — new |
 | `/blog` | Content engine output (SEO articles) | `/elite-insurance-blog` (already on the primary domain — `eliteinsurancegroup.org` is just an alias, not a separate CMS; see site audit) |
 
-## MVP line/vertical landing pages (8–12 target)
+## MVP line/vertical landing pages (8–12 target) — built 2026-08-21
 
 **Reprioritized 2026-08-21** based on the agency owner's actual close-rate/commission data (`src/lib/config/agency.ts` → `priorityLines`), which corrects the handoff doc's personal-lines-heavy assumption. Elite is effectively a **commercial-first shop** behind its collector-car flagship branding: Workers Comp, General Liability, Builders Risk, Commercial Property, Commercial Auto, Commercial Umbrella, and Group Life outperform, alongside strong Short-Term Rental/Vacation Home and New Construction/Renovation activity.
 
