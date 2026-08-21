@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { contactFormSchema } from "@/lib/schemas/forms";
 import { addContactMessage } from "@/lib/contact/store";
 import { isHoneypotTripped } from "@/lib/forms/honeypot";
+import { notifyNewContactMessage } from "@/lib/notifications/leadNotify";
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const message = addContactMessage(parsed.data);
+    await notifyNewContactMessage(message);
     return NextResponse.json({ ok: true, id: message.id }, { status: 201 });
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
