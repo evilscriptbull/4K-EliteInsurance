@@ -10,6 +10,7 @@ import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
 import { QuoteContactFields, parseQuoteContactFields } from "@/components/forms/quote/QuoteContactFields";
+import { trackLeadCreatedFromResponse } from "@/lib/analytics/track";
 
 export function RecreationalQuoteForm() {
   const { state, fieldErrors, submit } = useLeadFormSubmit("/api/quote");
@@ -19,7 +20,7 @@ export function RecreationalQuoteForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success, data } = await submit({
       family: "recreational",
       ...parseQuoteContactFields(formData),
       vehicleType: formData.get("vehicleType"),
@@ -31,7 +32,10 @@ export function RecreationalQuoteForm() {
       liabilityLimits: formData.get("liabilityLimits"),
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackLeadCreatedFromResponse(data);
+      form.reset();
+    }
   }
 
   return (

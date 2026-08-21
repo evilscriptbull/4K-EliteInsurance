@@ -8,6 +8,7 @@ export interface LeadSource {
   utmMedium?: string;
   utmCampaign?: string;
   landingPage?: string;
+  gclid?: string;
 }
 
 function formatDollars(amount: number): string {
