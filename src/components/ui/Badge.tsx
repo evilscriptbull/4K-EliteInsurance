@@ -1,0 +1,11 @@
+import type { ReactNode } from "react";
+
+export function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full bg-accent-100 px-3 py-1 text-xs font-semibold text-accent-700 ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
