@@ -18,7 +18,11 @@ All of the above is now encoded in `src/lib/config/agency.ts`.
 
 Terry Isbel (Founder), Chaz Goodin (Agent/Owner — Sales & Marketing), Stephanie Goodin (Agent/Owner — HR & Finance), Lori Wright (Licensed Agent), Taylor Kitts (Account Manager), Angela Mattson (Account Manager), Kyle Arnold (Licensed Agent), Wesley Mutta (Licensed Agent), Kelly Partin (Licensed Agent).
 
-Note: blog posts are also credited to **Tyler Vaught** (3 of 6 posts) — not in the current team bios. Confirm whether Tyler is a past team member, a contracted content writer, or should be added to the About page during the rebuild.
+Note: blog posts are also credited to **Tyler Vaught** (3 of 6 posts) — confirmed by the agency owner (2026-08-21) to be an **ex-employee**. Migrate his 3 posts as-is (content ownership isn't affected), but don't list him on the new About page or route future content assignments to him.
+
+## About Us page content (real, pulled 2026-08-21)
+
+Header nav "About Us" now correctly points to `/local-insurance-agent-knoxville-tn` (the old `/insurance-agent-knoxville-tn` still 404s and is still linked from the footer — see `docs/site-audit/url-inventory.md`). Page title is SEO-targeted at commercial buyers: "Elite Insurance Knoxville Agency Commercial Business Experts." Body content ("What We're All About") is short — largely the same mission/community copy as the homepage's equivalent section (East TN community, Farragut Chamber of Commerce membership, support for Hope Resource Center / Fellowship of Christian Athletes / Grace Christian Academy / Fountain City Church, 25+ years serving collector-car clients, faith-based mission statement). No additional distinct content (e.g. no separate team bios on this page — those live only on the homepage). Carry the mission copy and community-org affiliations forward to the new `/about` page; the commercial-business-focused title tag is worth preserving too, since it now lines up with the confirmed priority-lines data.
 
 ## Blog content (6 posts total — full migration set, no cross-CMS scrape needed since it's the same Squarespace site)
 
@@ -35,13 +39,13 @@ Tags: Collector car insurance, Personal finance, auto insurance, Insurance, Home
 
 ## Orphaned page content worth reusing
 
-- **`/new-page-2`** — full "Best Restaurant Insurance Coverage Knoxville TN" landing page copy already exists (BOP, liquor liability, Dram Shop Act, food spoilage, etc.). Unlinked, has a placeholder `tel:+1YOUR-PHONE` link and a dead mini-nav. Reusable as a head start for a restaurant-vertical landing page (Phase 2 per `docs/backlog.md`) after fixing the phone link and folding into the real site nav/design.
+- **`/new-page-2`** — full "Best Restaurant Insurance Coverage Knoxville TN" landing page copy already exists (BOP, liquor liability, Dram Shop Act, food spoilage, etc.). Unlinked, has a placeholder `tel:+1YOUR-PHONE` link and a dead mini-nav. Per the agency owner (2026-08-21), this is being repurposed as a **worked example for the Phase 3 content engine** — a directed blog post at `/blog`, not an MVP landing page — since restaurants aren't in the confirmed priority-lines list. See `docs/content-calendar-90day.md`.
 - **`/new-page-1`** — empty stub titled "Contractor Insurance Knoxville TN." No content to reuse, but the title confirms contractor insurance was already flagged as a priority page — consistent with its place in the MVP set.
 
 ## Legal/compliance copy already in use (candidates to carry forward, not rewrite from scratch)
 
 - **Quote-form disclaimer:** "Coverage cannot be bound or altered using this form..." — carried forward into `src/lib/compliance/disclaimers.ts` (`noBindingViaForm`), verbatim.
-- **`/termsandconditions`** is actually SMS/TCPA marketing consent language, not general site terms — reuse as the starting point for `smsConsent` copy in `src/lib/compliance/disclaimers.ts` once compliance sign-off is available (still TBD, see `docs/open-questions.md`).
+- **`/termsandconditions`** is actually SMS/TCPA marketing consent language, not general site terms — reuse as the starting point for `smsConsent` copy in `src/lib/compliance/disclaimers.ts`, routed through the now-confirmed compliance approver (Chaz Goodin, chazgoodin@gmail.com — see `docs/open-questions.md`) before relaunch.
 - **`/privacypolicy`** — standard PII/payment/cookie policy; carry forward with legal review before relaunch.
 
 ## Forms inventory (exact fields — for lead-schema mapping and redirect/migration planning)

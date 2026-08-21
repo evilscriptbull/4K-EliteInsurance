@@ -45,7 +45,48 @@ export const agency = {
   partners: {
     collectorAppraisals: "https://classicautoappraisal.com",
   },
+  /**
+   * Who signs off on compliance/marketing language before it goes live.
+   * Confirmed by agency owner, 2026-08-21. Route AI-drafted content and
+   * lead-warmer copy changes through this contact per
+   * guardrails.requireHumanReviewForHigherRiskRecommendations.
+   */
+  complianceApprover: {
+    name: "Chaz Goodin",
+    email: "chazgoodin@gmail.com",
+  },
 } as const;
+
+/**
+ * Carriers Elite is appointed with, per agency owner, 2026-08-21. Safe to
+ * name on-site as a multi-carrier proof point (per the "Homepage direction"
+ * section of the handoff doc) — but this list does NOT license use of any
+ * carrier's logo/trademark, and never supports naming specific rates,
+ * appetite, or underwriting rules without carrier sign-off (see
+ * lib/compliance/guardrails.ts — neverFabricateCarrierProductsRatesAppetiteOrUnderwriting
+ * applies even to real, correctly-named carriers). Carrier logo/image usage
+ * permissions are still an open question (see docs/open-questions.md).
+ */
+export const carriers = ["Erie Insurance", "The Hartford", "Builders Mutual", "Travelers", "Encova"] as const;
+
+/**
+ * Highest-performing lines by the agency owner's own assessment (close
+ * rate/commission), 2026-08-21 — this supersedes the handoff doc's
+ * assumption-based landing-page ordering. Elite is a commercial-first shop:
+ * these lines, plus short-term rental/vacation home and new
+ * construction/renovation property work, outperform the personal-lines-heavy
+ * framing of the original site. Drives MVP landing-page priority — see
+ * docs/sitemap-mvp.md.
+ */
+export const priorityLines: readonly InsuranceLine[] = [
+  "workers-comp",
+  "general-liability",
+  "builders-risk",
+  "commercial-property",
+  "commercial-auto",
+  "commercial-umbrella",
+  "group-life",
+] as const;
 
 /**
  * States Elite is licensed to write business in. TN is home state / primary
@@ -80,15 +121,20 @@ export const insuranceLines = [
   "auto",
   "home",
   "business",
+  "general-liability",
+  "workers-comp",
+  "commercial-property",
+  "builders-risk",
+  "commercial-auto",
+  "commercial-umbrella",
+  "contractors",
+  "group-life",
   "life",
   "collector-vehicle",
   "boat",
   "motorcycle",
   "rv",
   "rental-property",
-  "commercial-auto",
-  "contractors",
-  "workers-comp",
   "cyber",
   "other",
 ] as const;
@@ -111,7 +157,12 @@ export const team = [
  * CRM/AMS this platform's lead adapter targets. Confirmed by agency owner,
  * 2026-08-21. See lib/compliance and future lib/integrations/crm for the
  * EZLynx-specific adapter.
+ *
+ * hasExistingWebsiteIntegration is false — confirmed by both the Phase 0
+ * site crawl (no rater/AMS widget anywhere on the live site) and the agency
+ * owner directly, 2026-08-21. The adapter is net-new work, not a migration.
  */
 export const crm = {
   system: "EZLynx",
+  hasExistingWebsiteIntegration: false,
 } as const;

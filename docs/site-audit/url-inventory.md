@@ -31,10 +31,11 @@
 
 | URL | Status | Description |
 |---|---|---|
-| `/insurance-agent-knoxville-tn` (About Us) | **404 — broken today** | Main nav "About Us" link is currently dead on the live site |
+| `/local-insurance-agent-knoxville-tn` (About Us) | 200 — **fixed 2026-08-21** | Header nav "About Us" now points here; real content pulled (see `docs/site-audit/content-inventory.md`) |
+| `/insurance-agent-knoxville-tn` (About Us, old) | **still 404** | The old URL still 404s and is **still linked from the live footer** — the header nav was updated to the new URL above but the footer link wasn't. Live-site bug, independent of this rebuild; redirect both old and new paths to `/about` in the new site regardless |
 | `/insurance-agency-knoxville` (Contact) | 200 | Same "Let's Get Started!" lead form as the homepage |
 
-Both are missing from `sitemap.xml` — check for `noindex` or manual sitemap exclusion before re-establishing SEO on the new build.
+All three are missing from `sitemap.xml` — check for `noindex` or manual sitemap exclusion before re-establishing SEO on the new build.
 
 ## Alias domain
 
@@ -57,6 +58,6 @@ Plus: "What We're All About" (mission/community/faith statement, Farragut Chambe
 
 ## Key flags
 
-1. **Broken nav link** — About Us (`/insurance-agent-knoxville-tn`) 404s live today; no content to preserve at that URL, just needs a redirect target to the new `/about`.
-2. **Orphaned draft pages** — `/new-page-1` (empty) and `/new-page-2` (built restaurant-insurance content, unlinked, has placeholder phone link) exist but aren't in navigation. `/new-page-2`'s copy is a useful head start for a future restaurant-vertical landing page (Phase 2, per `docs/backlog.md`); `/new-page-1`'s title ("Contractor Insurance Knoxville TN") signals contractor insurance was already identified as a priority page that was never finished — reinforces its place in the MVP set (see `docs/sitemap-mvp.md`).
-3. **No CRM/rater integration exists today.** Every quote/contact/claim form is a native Squarespace form with no embedded EZLynx or rater widget, no external script tags to any rating vendor. Leads are captured only in Squarespace's form storage/email notifications — staff must manually re-key into EZLynx (or wherever) today. This means the EZLynx adapter in `docs/backlog.md` is a **new integration**, not a migration of an existing automated flow — there's no existing automation to preserve, which simplifies the cutover but means the "reduce agent time spent collecting basic prospect information" outcome in the handoff doc is currently unmet by a wide margin.
+1. **About Us nav link — mixed state, resolved.** Header nav now points to `/local-insurance-agent-knoxville-tn` (200, real content). The footer link still points to the old dead `/insurance-agent-knoxville-tn`. Redirect both to the new site's `/about`.
+2. **Orphaned draft pages** — `/new-page-1` (empty) and `/new-page-2` (built restaurant-insurance content, unlinked, has placeholder phone link) exist but aren't in navigation. Per the agency owner (2026-08-21), `/new-page-2`'s restaurant copy is being used as a **worked example for the Phase 3 content engine** (a directed blog post) rather than an MVP landing page — restaurants aren't in the confirmed priority-lines list. `/new-page-1`'s title ("Contractor Insurance Knoxville TN") reinforces contractors staying in the MVP set (see `docs/sitemap-mvp.md`), since that vertical bundles several newly-confirmed priority lines (GL, Workers Comp, Commercial Auto).
+3. **No CRM/rater integration exists today** — confirmed both by this crawl and directly by the agency owner. Every quote/contact/claim form is a native Squarespace form with no embedded EZLynx or rater widget, no external script tags to any rating vendor. Leads are captured only in Squarespace's form storage/email notifications — staff must manually re-key into EZLynx today. This means the EZLynx adapter in `docs/backlog.md` is a **new integration**, not a migration of an existing automated flow — there's no existing automation to preserve, which simplifies the cutover but means the "reduce agent time spent collecting basic prospect information" outcome in the handoff doc is currently unmet by a wide margin.

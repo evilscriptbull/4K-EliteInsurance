@@ -7,7 +7,7 @@ Per the handoff doc's MVP boundary: roughly 8–12 strong line/vertical landing 
 | Path | Purpose | Old-site equivalent |
 |---|---|---|
 | `/` | Homepage — local value prop, line selector, AI qualification CTA, collector-car authority, reviews | `/` |
-| `/about` | Team, history, mission, licensed states | `/insurance-agent-knoxville-tn` |
+| `/about` | Team, history, mission, licensed states | `/local-insurance-agent-knoxville-tn` (live nav now points here; content pulled — see `docs/site-audit/content-inventory.md`. Also redirect the old dead `/insurance-agent-knoxville-tn`, still linked from the live footer) |
 | `/contact` | Contact form, phone/text/email, office info | `/insurance-agency-knoxville` |
 | `/claims` | File a claim | `/claims` |
 | `/quote` | AI Lead Warmer entry point (replaces static quote form) | `/insurancequotes` |
@@ -16,22 +16,22 @@ Per the handoff doc's MVP boundary: roughly 8–12 strong line/vertical landing 
 
 ## MVP line/vertical landing pages (8–12 target)
 
-Priority order reflects flagship specialty + highest-intent commercial lines called out in the handoff doc. Confirm against actual close-rate/commission data once available (open question).
+**Reprioritized 2026-08-21** based on the agency owner's actual close-rate/commission data (`src/lib/config/agency.ts` → `priorityLines`), which corrects the handoff doc's personal-lines-heavy assumption. Elite is effectively a **commercial-first shop** behind its collector-car flagship branding: Workers Comp, General Liability, Builders Risk, Commercial Property, Commercial Auto, Commercial Umbrella, and Group Life outperform, alongside strong Short-Term Rental/Vacation Home and New Construction/Renovation activity.
 
-1. `/collector-car-insurance` — flagship specialty (classics, muscle cars, exotics, agreed value)
-2. `/auto-insurance` — personal auto
-3. `/home-insurance` — homeowners
-4. `/boat-insurance` — boat/marine
-5. `/motorcycle-insurance`
-6. `/rv-insurance`
-7. `/business-insurance` — general commercial umbrella page, links to verticals below
-8. `/contractors-insurance` — contractor vertical (largest commercial vertical opportunity per doc)
-9. `/workers-comp-insurance`
-10. `/landlord-insurance` — rental property/short-term rental (matches existing homepage section)
-11. `/life-insurance`
-12. `/commercial-auto-insurance`
+1. `/collector-car-insurance` — flagship specialty (classics, muscle cars, exotics, agreed value). Kept #1 per the handoff doc's explicit instruction to lead with this for brand/authority/referral value, independent of raw commission ranking.
+2. `/business-insurance` — commercial hub/overview page, entry point into the lines below (replaces the old homepage's "Business Insurance & Workers' Comp" anchor section as a real page)
+3. `/general-liability-insurance` — confirmed top-performing line
+4. `/workers-comp-insurance` — confirmed top-performing line
+5. `/commercial-auto-insurance` — confirmed top-performing line
+6. `/commercial-property-insurance` — confirmed top-performing line
+7. `/builders-risk-insurance` — confirmed top-performing line; also covers new construction/renovation risk, which the owner flagged as doing well
+8. `/commercial-umbrella-insurance` — confirmed top-performing line
+9. `/contractors-insurance` — vertical bundling GL + Workers Comp + Commercial Auto + Builders Risk; revives the topic already staged (unfinished) at the live site's orphaned `/new-page-1`
+10. `/short-term-rental-insurance` — STR/vacation homes/lake homes; owner-confirmed strong performer, matches the existing homepage's "Short-Term Rental, Airbnb, Cabins, Lake Homes" section
+11. `/group-life-insurance` — confirmed top-performing line (distinct from personal life — see #12)
+12. `/personal-auto-home-insurance` — combined single page for personal auto + homeowners. Demoted from separate top-level pages given the new priority data, but kept in the MVP set since these remain necessary cross-sell/completeness lines and appear in the AI Lead Warmer's initial flow set (`docs/backlog.md`)
 
-Deferred to Phase 2+: `/cyber-insurance`, dedicated pages per commercial vertical (restaurants, transportation, medical/professional offices, retail/service, automotive businesses) beyond contractors — build these once the first wave proves conversion.
+Deferred to Phase 2+: `/boat-insurance`, `/motorcycle-insurance`, `/rv-insurance` (recreational — still valuable, especially as collector-car cross-sell, but not in the confirmed priority-lines list), `/life-insurance` (personal, as distinct from Group Life), `/cyber-insurance`, and dedicated pages per additional commercial vertical (restaurants, transportation, medical/professional offices, retail/service, automotive businesses). The restaurant-insurance content already drafted at the live site's orphaned `/new-page-2` is being repurposed as a **worked example for the Phase 3 content engine** (a directed blog post, not a landing page) rather than built out here — see `docs/content-calendar-90day.md`.
 
 ## Redirect map
 
