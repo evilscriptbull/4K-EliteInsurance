@@ -6,9 +6,11 @@ import type { NextConfig } from "next";
  * explicit redirect, even ones consolidated into a single new page, so
  * this must go live at the same time as the DNS cutover, not before.
  *
- * Not yet included: `/privacypolicy` and `/termsandconditions` — their new
- * destinations (`/privacy`, `/sms-terms`) don't exist on the new site yet
- * (see redirect-map.md: both need legal/compliance review before relaunch).
+ * `/privacypolicy` and `/termsandconditions` redirect to `/privacy` and
+ * `/sms-terms`, carrying forward the real text from the live site
+ * (src/app/(site)/privacy, src/app/(site)/sms-terms) — still pending legal
+ * review before the DNS cutover, per redirect-map.md.
+ *
  * `eliteinsurancegroup.org` (alias domain) and `/new-page-1`/`/new-page-2`
  * are handled separately (DNS decision / no redirect needed — see the map).
  */
@@ -57,6 +59,8 @@ const legacyRedirects = [
   { source: "/elite-insurance-blog/tag/Insurance", destination: "/blog", permanent: true },
   { source: "/elite-insurance-blog/tag/Homeowners\\+insurance", destination: "/blog", permanent: true },
   { source: "/elite-insurance-blog/tag/budget", destination: "/blog", permanent: true },
+  { source: "/privacypolicy", destination: "/privacy", permanent: true },
+  { source: "/termsandconditions", destination: "/sms-terms", permanent: true },
 ];
 
 const nextConfig: NextConfig = {

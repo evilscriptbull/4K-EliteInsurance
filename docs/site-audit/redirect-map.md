@@ -13,8 +13,8 @@ Rule from `docs/sitemap-mvp.md`: every URL currently indexed gets an explicit 30
 | `/elite-insurance-blog` | `/blog` | |
 | `/elite-insurance-blog/*` (6 posts) | `/blog/<slug>` | Migrate all 6 posts, including the 3 by ex-employee Tyler Vaught; preserve or 301 old slugs individually |
 | `/elite-insurance-blog/tag/*` (6 tags) | `/blog/tag/<tag>` or drop | Thin taxonomy (~1 post/tag in several cases) — consider consolidating tags rather than 1:1 redirecting during the content-engine rebuild |
-| `/privacypolicy` | `/privacy` | Legal review before relaunch |
-| `/termsandconditions` | `/sms-terms` (or fold into `/privacy`) | Content is actually SMS/TCPA consent language, not general terms — rename to match actual content; route through compliance approver Chaz Goodin before relaunch |
+| `/privacypolicy` | `/privacy` | Built 2026-08-22 with the real text pulled from the live site — **still needs legal review before relaunch** |
+| `/termsandconditions` | `/sms-terms` | Content is actually SMS/TCPA consent language, not general terms — renamed to match. Built 2026-08-22 with the real text pulled from the live site — **still needs to route through compliance approver Chaz Goodin before relaunch** |
 | `/new-page-1` | — | Empty stub, not indexed meaningfully; no redirect needed, exclude from new site |
 | `/new-page-2` | — (content → `/blog/restaurant-insurance-knoxville`) | Not a landing page: owner confirmed (2026-08-21) this is a worked example for the Phase 3 content engine, published as a blog post, not redirected as a nav page — see `docs/content-calendar-90day.md` |
 
