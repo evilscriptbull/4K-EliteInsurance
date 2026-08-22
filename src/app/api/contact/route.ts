@@ -3,6 +3,7 @@ import { contactFormSchema } from "@/lib/schemas/forms";
 import { addContactMessage } from "@/lib/contact/store";
 import { isHoneypotTripped } from "@/lib/forms/honeypot";
 import { notifyNewContactMessage } from "@/lib/notifications/leadNotify";
+import { sendContactConfirmationEmail } from "@/lib/notifications/emailNotify";
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
   try {
     const message = await addContactMessage(parsed.data);
-    await notifyNewContactMessage(message);
+    await Promise.all([notifyNewContactMessage(message), sendContactConfirmationEmail(message)]);
     return NextResponse.json({ ok: true, id: message.id }, { status: 201 });
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
