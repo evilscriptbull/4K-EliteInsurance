@@ -94,7 +94,11 @@ Both Twilio and Resend were considered programmable, code-first APIs rather than
 
 </details>
 
-Still required before Phase 2 nurture ships: Resend account + domain verification (SPF/DKIM), and wiring `contact.smsConsent`/consent tracking (already in `src/lib/schemas/lead.ts`) through to GoTo's opt-out handling.
+**2026-08-22: Resend confirmation emails built and live-verified.** `src/lib/integrations/resend/client.ts` (fallback-safe, same contract as every other integration here) + `src/lib/notifications/emailNotify.ts` send a customer-facing confirmation email on quote/contact/claim submission (`RequestConfirmationEmail`, `src/components/emails/`, built with `@react-email/components` per the DX reasoning above). This is distinct from `leadNotify.ts`'s internal staff SMS — email goes to the customer, SMS goes to the agency. Copy is non-binding by design (see the disclaimer line in the template), matching `guardrails.neverImplyCoverageBound`, and directly fulfills the line already in `disclaimers.noBindingViaForm`: "...with an email confirmation of the request."
+
+Verified live: a standalone send returned a real Resend message ID, and a real `/contact` form submission in the browser produced a `201` with no send errors logged. **Domain not verified yet** — sends currently go through Resend's shared `onboarding@resend.dev` sandbox sender, which Resend restricts to delivering only to the email address on the Resend account itself. Real customers won't receive these until `RESEND_FROM_EMAIL` is set to an address on a domain verified in Resend (SPF/DKIM, resend.com/domains) — see `.env.example`.
+
+Still required before Phase 2 nurture ships: the full conversational resume engine (this pass is a one-way confirmation, not two-way nurture) and wiring `contact.smsConsent`/consent tracking (already in `src/lib/schemas/lead.ts`) through to GoTo's opt-out handling.
 
 ## Durable persistence
 

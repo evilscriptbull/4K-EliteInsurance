@@ -4,6 +4,7 @@ import { quoteFormToLead, type LeadSource } from "@/lib/leads/mappers";
 import { addLead } from "@/lib/leads/store";
 import { isHoneypotTripped } from "@/lib/forms/honeypot";
 import { notifyNewLead } from "@/lib/notifications/leadNotify";
+import { sendQuoteConfirmationEmail } from "@/lib/notifications/emailNotify";
 import { pushLeadToEZLynx } from "@/lib/integrations/ezlynx/adapter";
 
 export async function POST(request: Request) {
@@ -29,7 +30,11 @@ export async function POST(request: Request) {
     const leadSource: LeadSource = typeof source === "object" && source !== null ? (source as LeadSource) : {};
     const lead = quoteFormToLead(parsed.data, leadSource);
     await addLead(lead);
-    const [, crmResult] = await Promise.all([notifyNewLead(lead), pushLeadToEZLynx(lead)]);
+    const [, , crmResult] = await Promise.all([
+      notifyNewLead(lead),
+      sendQuoteConfirmationEmail(lead),
+      pushLeadToEZLynx(lead),
+    ]);
     return NextResponse.json(
       { ok: true, id: lead.id, line: lead.line, leadScoreTier: lead.leadScoreTier, crmStatus: crmResult.status },
       { status: 201 },
