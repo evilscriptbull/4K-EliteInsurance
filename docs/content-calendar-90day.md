@@ -35,7 +35,9 @@ Geographic scope corrected from the original TN/East-TN-only framing: Elite is l
 
 ## Content-engine worked example: the restaurant insurance post
 
-Per the agency owner (2026-08-21): the fully-written but unlinked "Best Restaurant Insurance Coverage Knoxville TN" copy sitting at the live site's orphaned `/new-page-2` (see `docs/site-audit/content-inventory.md`) should be used as a **worked example of a directed blog post** for the Phase 3 content engine — not built as its own MVP landing page, since restaurants aren't in the confirmed priority-lines list. Use it as the reference case when building the trigger → topic/keyword selection → draft → compliance/fact-check → approval → publish workflow: fix the placeholder `tel:+1YOUR-PHONE` link and dead mini-nav, run it through `src/lib/compliance/guardrails.ts`, and publish as a `/blog` post rather than a nav-linked page.
+Per the agency owner (2026-08-21): the fully-written but unlinked "Best Restaurant Insurance Coverage Knoxville TN" copy sitting at the live site's orphaned `/new-page-2` (see `docs/site-audit/content-inventory.md`) is a **worked example of a directed blog post's structure** for the Phase 3 content engine — not built as its own MVP landing page, since restaurants aren't in the confirmed priority-lines list.
+
+**Update, 2026-08-22:** per the agency owner, the restaurant post itself stays unpublished — its section pattern (philosophy/pain-points → coverage-by-type breakdown → who-we-cover → why-independent-agent → FAQ → CTA) was used as the structural baseline for the first 6 new posts instead, covering actual priority lines: general liability, commercial auto, boat insurance, group life, workers' comp, and builders risk (see `docs/backlog.md` and `docs/architecture.md` — "Blog / Sanity CMS"). Those 6 seeded as `status: "draft"` pending Chaz Goodin's compliance review, consistent with the trigger → draft → compliance/fact-check → approval → publish workflow this was meant to prove out.
 
 ## Ongoing / evergreen (any week, fill gaps)
 
