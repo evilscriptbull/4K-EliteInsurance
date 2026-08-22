@@ -1,12 +1,13 @@
 /**
  * GoTo Connect Messaging V2 API client. Endpoints/flow verified against
  * GoTo's own developer docs (developer.goto.com), not guessed:
- * - Auth: OAuth 2.0 Authorization Code flow, `messaging.v1.send` scope,
- *   token endpoint https://authentication.logmeininc.com/oauth/token
+ * - Auth: Personal Access Token exchange, `grant_type=personal_access_token`,
+ *   token endpoint https://authentication.logmeininc.com/oauth/token. The
+ *   PAT itself is long-lived (generated once at myaccount.goto.com >
+ *   Developer Tools, on an OAuth client with "Personal Access Token"
+ *   enabled at developer.logmeininc.com/clients); only the access token it's
+ *   exchanged for expires (1 hour), so it's refetched and cached here.
  * - Send: POST https://api.goto.com/messaging/v1/messages
- *
- * See src/app/api/integrations/goto/oauth/{start,callback}/route.ts for the
- * one-time setup flow that produces GOTO_REFRESH_TOKEN.
  */
 
 const TOKEN_URL = "https://authentication.logmeininc.com/oauth/token";
@@ -15,20 +16,20 @@ const SMS_URL = "https://api.goto.com/messaging/v1/messages";
 interface GotoConfig {
   clientId: string;
   clientSecret: string;
-  refreshToken: string;
+  personalAccessToken: string;
   ownerPhoneNumber: string;
 }
 
 function getConfig(): GotoConfig | null {
   const clientId = process.env.GOTO_CLIENT_ID;
   const clientSecret = process.env.GOTO_CLIENT_SECRET;
-  const refreshToken = process.env.GOTO_REFRESH_TOKEN;
+  const personalAccessToken = process.env.GOTO_PERSONAL_ACCESS_TOKEN;
   const ownerPhoneNumber = process.env.GOTO_OWNER_PHONE_NUMBER;
 
-  if (!clientId || !clientSecret || !refreshToken || !ownerPhoneNumber) {
+  if (!clientId || !clientSecret || !personalAccessToken || !ownerPhoneNumber) {
     return null;
   }
-  return { clientId, clientSecret, refreshToken, ownerPhoneNumber };
+  return { clientId, clientSecret, personalAccessToken, ownerPhoneNumber };
 }
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
@@ -43,28 +44,17 @@ async function getAccessToken(config: GotoConfig): Promise<string> {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
       Authorization: `Basic ${basicAuth}`,
     },
-    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: config.refreshToken }),
+    body: new URLSearchParams({ grant_type: "personal_access_token", pat: config.personalAccessToken }),
   });
 
   if (!response.ok) {
-    throw new Error(`GoTo token refresh failed: ${response.status} ${await response.text()}`);
+    throw new Error(`GoTo PAT exchange failed: ${response.status} ${await response.text()}`);
   }
 
   const data = await response.json();
-
-  // GoTo rotates refresh tokens as they near expiry. We only hold the
-  // token in an env var (no persistence layer), so we can't update it
-  // ourselves — surface it loudly so an operator updates GOTO_REFRESH_TOKEN
-  // before the old one stops working.
-  if (data.refresh_token && data.refresh_token !== config.refreshToken) {
-    console.warn(
-      "[goto] GoTo issued a new refresh token. Update GOTO_REFRESH_TOKEN in your env — the old one will expire soon:",
-      data.refresh_token,
-    );
-  }
-
   cachedAccessToken = { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
   return cachedAccessToken.token;
 }
@@ -83,7 +73,7 @@ export async function sendSms(to: string, body: string): Promise<SendSmsResult> 
   const config = getConfig();
   if (!config) {
     console.log(
-      "[goto] SMS not sent — GoTo credentials not configured (GOTO_CLIENT_ID/GOTO_CLIENT_SECRET/GOTO_REFRESH_TOKEN/GOTO_OWNER_PHONE_NUMBER).",
+      "[goto] SMS not sent — GoTo credentials not configured (GOTO_CLIENT_ID/GOTO_CLIENT_SECRET/GOTO_PERSONAL_ACCESS_TOKEN/GOTO_OWNER_PHONE_NUMBER).",
     );
     return { sent: false, reason: "not-configured" };
   }
