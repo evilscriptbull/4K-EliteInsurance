@@ -26,7 +26,7 @@ Derived from the roadmap in the handoff doc. Split MVP / Phase 2+ / Later, per t
 - [x] EZLynx adapter scaffolded — `src/lib/integrations/ezlynx/adapter.ts`, wired into `/api/quote`. **Not connected**: EZLynx's API is partner/enterprise-gated and Elite only has a portal login today, not API credentials (see `docs/open-questions.md` for exactly what to request from EZLynx/Applied Systems). Honestly reports `{status: "not-connected"}` rather than faking a push against guessed endpoints.
 - [ ] EZLynx live connection — blocked on API credentials (see open-questions.md); once granted, implement the real request logic in `pushLeadToEZLynx()`
 - [ ] Resend account setup + domain verification (SPF/DKIM) for email nurture
-- [ ] Analytics + source-to-lead attribution (event schema drafted, see `docs/event-tracking-schema.md`)
+- [x] GA4 analytics wired up (Measurement ID `NEXT_PUBLIC_GA_MEASUREMENT_ID`, see `.env.example`) — `page_view` automatic, `landing_page_view`/`lead_created`/`contact_submitted`/`claim_submitted` implemented and verified firing with real data (see `docs/event-tracking-schema.md`). `gclid` captured into `Lead.source.gclid` ahead of the agency owner's incoming Google Ads account access. Full source-to-lead attribution still needs durable persistence + EZLynx sync (see items above/below) — GA4 covers the marketing-visibility side, not the CRM side.
 - [ ] AI-assisted content drafting/scheduling with human approval workflow — approver confirmed: Chaz Goodin (chazgoodin@gmail.com)
 - [ ] 301 redirect map deployed at launch; Squarespace kept live until validated
 - [ ] Carrier logo/usage rights (still open) — once confirmed, swap `CarrierStrip.tsx`'s text wordmarks for real logo assets

@@ -73,6 +73,7 @@ export const leadSchema = z.object({
     utmMedium: z.string().optional(),
     utmCampaign: z.string().optional(),
     landingPage: z.string().optional(),
+    gclid: z.string().optional(), // Google Ads click ID, for internal attribution independent of GA4<->Ads account linking
   }),
 });
 

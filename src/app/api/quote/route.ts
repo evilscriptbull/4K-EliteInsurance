@@ -30,7 +30,10 @@ export async function POST(request: Request) {
     const lead = quoteFormToLead(parsed.data, leadSource);
     addLead(lead);
     const [, crmResult] = await Promise.all([notifyNewLead(lead), pushLeadToEZLynx(lead)]);
-    return NextResponse.json({ ok: true, id: lead.id, crmStatus: crmResult.status }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, id: lead.id, line: lead.line, leadScoreTier: lead.leadScoreTier, crmStatus: crmResult.status },
+      { status: 201 },
+    );
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
   }

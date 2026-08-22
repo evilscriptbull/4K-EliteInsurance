@@ -8,6 +8,7 @@ import { RadioGroupField } from "@/components/forms/fields/RadioGroupField";
 import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
+import { trackClaimSubmitted } from "@/lib/analytics/track";
 
 const yesNoNotSure = [
   { value: "yes", label: "Yes" },
@@ -23,7 +24,7 @@ export function ClaimsForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success } = await submit({
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       phone: formData.get("phone"),
@@ -39,7 +40,10 @@ export function ClaimsForm() {
       company_website: formData.get("company_website"),
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackClaimSubmitted();
+      form.reset();
+    }
   }
 
   return (

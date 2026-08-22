@@ -9,6 +9,7 @@ import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
 import { QuoteContactFields, parseQuoteContactFields } from "@/components/forms/quote/QuoteContactFields";
+import { trackLeadCreatedFromResponse } from "@/lib/analytics/track";
 
 const coverageTypeOptions = [
   { value: "business", label: "General Business" },
@@ -31,7 +32,7 @@ export function BusinessQuoteForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success, data } = await submit({
       family: "business",
       ...parseQuoteContactFields(formData),
       businessName: formData.get("businessName"),
@@ -43,7 +44,10 @@ export function BusinessQuoteForm() {
       liabilityCoverageRequested: formData.get("liabilityCoverageRequested"),
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackLeadCreatedFromResponse(data);
+      form.reset();
+    }
   }
 
   return (
