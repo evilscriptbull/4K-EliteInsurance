@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     template: `%s | ${agency.legalName}`,
   },
   description: `${agency.legalName} is an independent insurance agency based in ${agency.address.city}, ${agency.address.state}, serving ${agency.address.region} and licensed in ${agency.address.state} plus 13 other states. Home, auto, business, and our flagship collector vehicle program.`,
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
