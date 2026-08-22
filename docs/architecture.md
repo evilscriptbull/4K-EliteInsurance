@@ -10,6 +10,7 @@
 - **SMS/Email nurture:** **GoTo Connect (SMS, existing service) + Resend (email)** — working decision, see rationale below
 - **Internal notifications:** GoTo SMS to agency staff on new lead/contact/claim — see "GoTo integration" below
 - **CRM push:** EZLynx adapter scaffolded (`src/lib/integrations/ezlynx/adapter.ts`), not yet connected — API access is gated, see "EZLynx integration status" below
+- **Platform monitoring:** `@vercel/analytics` (page-view/visitor analytics) + `@vercel/speed-insights` (Core Web Vitals) — zero-config, auto-activate on Vercel deploys, no-op locally. Distinct from GA4: this is Vercel's own dashboard, not a replacement for the marketing-funnel tracking in `src/lib/analytics/track.ts`.
 
 ## Module diagram
 
