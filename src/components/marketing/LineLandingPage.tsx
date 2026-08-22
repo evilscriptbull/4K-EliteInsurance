@@ -3,6 +3,7 @@ import { Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import { CTABanner } from "@/components/ui/CTABanner";
 import { RelatedLines } from "@/components/marketing/RelatedLines";
+import { LandingPageViewTracker } from "@/components/marketing/LandingPageViewTracker";
 import { agency, priorityLines, type InsuranceLine } from "@/lib/config/agency";
 import { resolveQuoteFormFamily } from "@/lib/config/quote-forms";
 
@@ -43,6 +44,7 @@ export function LineLandingPage({
 
   return (
     <>
+      <LandingPageViewTracker line={insuranceLine} />
       <Section background="brand">
         <div className="max-w-2xl">
           {isPriority && (

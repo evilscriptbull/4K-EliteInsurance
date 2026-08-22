@@ -27,7 +27,10 @@ export async function POST(request: Request) {
     const leadSource: LeadSource = typeof source === "object" && source !== null ? (source as LeadSource) : {};
     const lead = quoteFormToLead(parsed.data, leadSource);
     addLead(lead);
-    return NextResponse.json({ ok: true, id: lead.id }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, id: lead.id, line: lead.line, leadScoreTier: lead.leadScoreTier },
+      { status: 201 },
+    );
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
   }

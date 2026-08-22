@@ -24,7 +24,7 @@ Derived from the roadmap in the handoff doc. Split MVP / Phase 2+ / Later, per t
 - [ ] AI Lead Warmer: 5 initial flows (Home/Auto, Boat/Recreational, Collector Vehicle, Commercial/Contractor, General Business) — replaces the static `/quote` forms with a conversational flow; update `AiQuoteCta.tsx`'s copy when this ships (currently deliberately not claiming AI qualification exists yet)
 - [ ] EZLynx CRM adapter (lead push, system-of-record pattern) — **net-new integration**, confirmed by both the audit and the agency owner that no CRM/rater integration exists on the live site today. Leads currently only reach the in-memory store/console log.
 - [ ] Twilio + Resend account setup and integration (10DLC campaign registration has review lag — start early)
-- [ ] Analytics + source-to-lead attribution (event schema drafted, see `docs/event-tracking-schema.md`)
+- [x] GA4 analytics wired up (Measurement ID `NEXT_PUBLIC_GA_MEASUREMENT_ID`, see `.env.example`) — `page_view` automatic, `landing_page_view`/`lead_created`/`contact_submitted`/`claim_submitted` implemented and verified firing with real data (see `docs/event-tracking-schema.md`). `gclid` captured into `Lead.source.gclid` ahead of the agency owner's incoming Google Ads account access. Full source-to-lead attribution still needs durable persistence + EZLynx sync (see items above/below) — GA4 covers the marketing-visibility side, not the CRM side.
 - [ ] AI-assisted content drafting/scheduling with human approval workflow — approver confirmed: Chaz Goodin (chazgoodin@gmail.com)
 - [ ] 301 redirect map deployed at launch; Squarespace kept live until validated
 - [ ] Carrier logo/usage rights (still open) — once confirmed, swap `CarrierStrip.tsx`'s text wordmarks for real logo assets

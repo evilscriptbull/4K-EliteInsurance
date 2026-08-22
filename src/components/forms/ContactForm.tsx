@@ -7,6 +7,7 @@ import { TextAreaField } from "@/components/forms/fields/TextAreaField";
 import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
+import { trackContactSubmitted } from "@/lib/analytics/track";
 
 export function ContactForm() {
   const { state, fieldErrors, submit } = useLeadFormSubmit("/api/contact");
@@ -16,7 +17,7 @@ export function ContactForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success } = await submit({
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       phone: formData.get("phone"),
@@ -25,7 +26,10 @@ export function ContactForm() {
       company_website: formData.get("company_website"),
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackContactSubmitted();
+      form.reset();
+    }
   }
 
   return (

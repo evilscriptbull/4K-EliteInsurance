@@ -9,6 +9,7 @@ import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
 import { QuoteContactFields, parseQuoteContactFields } from "@/components/forms/quote/QuoteContactFields";
+import { trackLeadCreatedFromResponse } from "@/lib/analytics/track";
 
 export function HomeQuoteForm() {
   const { state, fieldErrors, submit } = useLeadFormSubmit("/api/quote");
@@ -18,7 +19,7 @@ export function HomeQuoteForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success, data } = await submit({
       family: "home",
       ...parseQuoteContactFields(formData),
       dateOfBirth: formData.get("dateOfBirth"),
@@ -27,7 +28,10 @@ export function HomeQuoteForm() {
       deductible: formData.get("deductible"),
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackLeadCreatedFromResponse(data);
+      form.reset();
+    }
   }
 
   return (

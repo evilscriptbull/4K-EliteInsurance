@@ -10,6 +10,7 @@ import { HoneypotField } from "@/components/forms/fields/HoneypotField";
 import { FormStatus } from "@/components/forms/FormStatus";
 import { Button } from "@/components/ui/Button";
 import { QuoteContactFields, parseQuoteContactFields } from "@/components/forms/quote/QuoteContactFields";
+import { trackLeadCreatedFromResponse } from "@/lib/analytics/track";
 
 export function LifeQuoteForm() {
   const { state, fieldErrors, submit } = useLeadFormSubmit("/api/quote");
@@ -19,7 +20,7 @@ export function LifeQuoteForm() {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const success = await submit({
+    const { success, data } = await submit({
       family: "life",
       ...parseQuoteContactFields(formData),
       amountRequested: Number(formData.get("amountRequested")),
@@ -30,7 +31,10 @@ export function LifeQuoteForm() {
       medicationsSurgeries: formData.get("medicationsSurgeries") || undefined,
     });
 
-    if (success) form.reset();
+    if (success) {
+      trackLeadCreatedFromResponse(data);
+      form.reset();
+    }
   }
 
   return (
