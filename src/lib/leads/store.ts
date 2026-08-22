@@ -1,19 +1,38 @@
+import { desc } from "drizzle-orm";
 import type { Lead } from "@/lib/schemas/lead";
+import { getDb } from "@/lib/db/client";
+import { leads as leadsTable } from "@/lib/db/schema";
 
 /**
- * In-memory only — resets on every server restart, redeploy, or serverless
- * cold start. This is NOT real persistence. It exists so this pass has an
- * observable landing spot for submitted leads without standing up
- * Postgres/Supabase this session. Real persistence and the EZLynx push are
- * tracked in docs/backlog.md.
+ * Persists to Postgres when DATABASE_URL is configured; otherwise falls
+ * back to this in-memory array (not durable — resets on every server
+ * restart, redeploy, or serverless cold start).
  */
-const leads: Lead[] = [];
+const inMemoryLeads: Lead[] = [];
 
-export function addLead(lead: Lead): void {
-  leads.push(lead);
+export async function addLead(lead: Lead): Promise<void> {
   console.log(`[lead] ${lead.id} — ${lead.line} — ${lead.contact.firstName} ${lead.contact.lastName}`);
+
+  const db = getDb();
+  if (db) {
+    await db.insert(leadsTable).values({
+      id: lead.id,
+      createdAt: new Date(lead.createdAt),
+      line: lead.line,
+      leadScore: lead.leadScore,
+      leadScoreTier: lead.leadScoreTier,
+      data: lead,
+    });
+  } else {
+    inMemoryLeads.push(lead);
+  }
 }
 
-export function getLeads(): readonly Lead[] {
-  return leads;
+export async function getLeads(): Promise<readonly Lead[]> {
+  const db = getDb();
+  if (db) {
+    const rows = await db.select().from(leadsTable).orderBy(desc(leadsTable.createdAt));
+    return rows.map((row) => row.data as Lead);
+  }
+  return inMemoryLeads;
 }

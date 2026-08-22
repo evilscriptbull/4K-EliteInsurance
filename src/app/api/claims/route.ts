@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const claim = addClaim(parsed.data);
+    const claim = await addClaim(parsed.data);
     return NextResponse.json({ ok: true, id: claim.id }, { status: 201 });
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const message = addContactMessage(parsed.data);
+    const message = await addContactMessage(parsed.data);
     return NextResponse.json({ ok: true, id: message.id }, { status: 201 });
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
