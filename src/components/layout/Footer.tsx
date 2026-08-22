@@ -72,6 +72,14 @@ export function Footer() {
           <p>
             © {year} {agency.legalName}. All rights reserved.
           </p>
+          <div className="flex gap-4">
+            <Link href="/privacy" className="hover:text-white">
+              Privacy Policy
+            </Link>
+            <Link href="/sms-terms" className="hover:text-white">
+              SMS Terms
+            </Link>
+          </div>
           <p className="max-w-2xl">{disclaimers.noBindingViaForm}</p>
         </Container>
       </div>
