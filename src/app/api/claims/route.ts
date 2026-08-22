@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const claim = addClaim(parsed.data);
+    const claim = await addClaim(parsed.data);
     await notifyNewClaim(claim);
     return NextResponse.json({ ok: true, id: claim.id }, { status: 201 });
   } catch {

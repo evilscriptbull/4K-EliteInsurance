@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   try {
     const leadSource: LeadSource = typeof source === "object" && source !== null ? (source as LeadSource) : {};
     const lead = quoteFormToLead(parsed.data, leadSource);
-    addLead(lead);
+    await addLead(lead);
     const [, crmResult] = await Promise.all([notifyNewLead(lead), pushLeadToEZLynx(lead)]);
     return NextResponse.json(
       { ok: true, id: lead.id, line: lead.line, leadScoreTier: lead.leadScoreTier, crmStatus: crmResult.status },

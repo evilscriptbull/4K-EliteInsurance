@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const message = addContactMessage(parsed.data);
+    const message = await addContactMessage(parsed.data);
     await notifyNewContactMessage(message);
     return NextResponse.json({ ok: true, id: message.id }, { status: 201 });
   } catch {
