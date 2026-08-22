@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { claimFormSchema } from "@/lib/schemas/forms";
 import { addClaim } from "@/lib/claims/store";
 import { isHoneypotTripped } from "@/lib/forms/honeypot";
+import { notifyNewClaim } from "@/lib/notifications/leadNotify";
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const claim = await addClaim(parsed.data);
+    await notifyNewClaim(claim);
     return NextResponse.json({ ok: true, id: claim.id }, { status: 201 });
   } catch {
     return NextResponse.json({ ok: false, error: "internal validation error" }, { status: 500 });
