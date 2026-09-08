@@ -60,17 +60,20 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 const sql = postgres(databaseUrl, { prepare: false });
 
-// The invite email's link redirects here after Supabase verifies it. Must
-// be a URL the *recipient's* browser can actually reach — localhost only
-// works for whoever is running this script on their own machine. Set
-// NEXT_PUBLIC_SITE_URL to your deployed URL before inviting anyone else.
+// No redirectTo is passed to inviteUserByEmail anymore, and the Invite
+// user email template in the Supabase dashboard must NOT reference
+// {{ .ConfirmationURL }} — that link's endpoint consumes the invite on a
+// bare GET request, which corporate email security scanners do
+// automatically before the real recipient opens the email (confirmed live
+// against a real invite — see docs/backlog.md). The template instead
+// shows the numeric {{ .Token }} code as plain text, plus a normal link to
+// this app's own /staff/join page, which is just an inert form — safe for
+// a scanner to prefetch, since visiting it doesn't consume anything.
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 if (!process.env.NEXT_PUBLIC_SITE_URL) {
-  console.warn(
-    `[associates] NEXT_PUBLIC_SITE_URL not set — invite links will redirect to ${siteUrl}, which only works on this machine. Set it to your deployed URL in .env.local before inviting real people.`,
-  );
+  console.warn(`[associates] NEXT_PUBLIC_SITE_URL not set — defaulting the printed join link to ${siteUrl}.`);
 }
-const redirectTo = `${siteUrl}/staff/set-password`;
+const joinUrl = `${siteUrl}/staff/join`;
 
 const { data: existingUsersPage, error: listError } = await supabase.auth.admin.listUsers();
 if (listError) throw listError;
@@ -105,12 +108,12 @@ for (const person of targets) {
     console.log(`[associates] Cleared ${person.name}'s never-completed invite.`);
   }
 
-  const { data, error } = await supabase.auth.admin.inviteUserByEmail(person.email, { redirectTo });
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(person.email);
   if (error) {
     console.error(`[associates] Failed to invite ${person.email}:`, error.message);
     continue;
   }
-  console.log(`[associates] Invited ${person.name} <${person.email}> (${data.user.id}).`);
+  console.log(`[associates] Invited ${person.name} <${person.email}> (${data.user.id}). They'll enter their code at ${joinUrl}.`);
 
   await sql`
     insert into associates (id, name, email, active)
