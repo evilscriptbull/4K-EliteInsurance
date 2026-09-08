@@ -141,16 +141,22 @@ export const insuranceLines = [
 
 export type InsuranceLine = (typeof insuranceLines)[number];
 
+/**
+ * Confirmed as the final roster by the agency owner, 2026-08-22 — replaces
+ * the prior list (Terry Isbel and Kelly Partin are no longer with the
+ * agency/team). This is also the source roster for the live-chat sales
+ * team (see docs/backlog.md — Scripted Lead Warmer).
+ */
 export const team = [
-  { name: "Terry Isbel", role: "Founder" },
   { name: "Chaz Goodin", role: "Agent / Owner — Sales and Marketing" },
   { name: "Stephanie Goodin", role: "Agent / Owner — HR and Finance" },
   { name: "Lori Wright", role: "Licensed Agent" },
   { name: "Taylor Kitts", role: "Account Manager" },
   { name: "Angela Mattson", role: "Account Manager" },
   { name: "Kyle Arnold", role: "Licensed Agent" },
-  { name: "Wesley Mutta", role: "Licensed Agent" },
-  { name: "Kelly Partin", role: "Licensed Agent" },
+  { name: "Wes Mutta", role: "Licensed Agent" },
+  // Role/title not yet confirmed with the agency owner — placeholder, not a guess to present as fact.
+  { name: "Tyler Moore", role: "Team Member" },
 ] as const;
 
 /**

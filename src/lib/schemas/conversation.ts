@@ -2,9 +2,10 @@ import { z } from "zod";
 import { insuranceLines } from "@/lib/config/agency";
 
 /**
- * Conversation-state schema for the AI lead warmer. Designed to be
- * persisted and resumed (see "Nurture" section of the handoff doc: resume
- * abandoned conversations via consented SMS/email, preserving state).
+ * Conversation-state schema for the Scripted Lead Warmer (see
+ * docs/backlog.md). Designed to be persisted and resumed (see "Nurture" in
+ * the handoff doc: resume abandoned conversations via consented SMS/email,
+ * preserving state — not yet built, this schema is ready for it).
  */
 
 export const messageRoleSchema = z.enum(["user", "assistant", "system"]);
@@ -15,11 +16,19 @@ export const messageSchema = z.object({
   timestamp: z.iso.datetime(),
 });
 
+/**
+ * Must match the status vocabulary used by the `conversations` table
+ * (src/lib/db/schema.ts) and lib/conversations/store.ts's
+ * ConversationStatus type — kept as literal string unions in both places
+ * rather than importing across the app/scripts boundary, so if this
+ * changes, update both.
+ */
 export const conversationStatusSchema = z.enum([
   "in-progress",
-  "abandoned",
-  "completed",
-  "handed-off", // routed to a human agent mid-conversation
+  "claimed", // an associate has taken over; the script pauses
+  "completed-unclaimed", // script finished, no associate ever claimed it
+  "completed-claimed", // an associate handled it live to completion
+  "abandoned", // customer left before the script finished, never claimed
 ]);
 
 export const conversationStateSchema = z.object({
@@ -41,6 +50,19 @@ export const conversationStateSchema = z.object({
 
   resumeChannel: z.enum(["sms", "email"]).optional(),
   resumeConsent: z.boolean().default(false),
+
+  // Marketing attribution captured at conversation start, mirroring
+  // Lead["source"] (lib/schemas/lead.ts) — carried through to the Lead
+  // this conversation eventually produces.
+  source: z
+    .object({
+      utmSource: z.string().optional(),
+      utmMedium: z.string().optional(),
+      utmCampaign: z.string().optional(),
+      landingPage: z.string().optional(),
+      gclid: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type ConversationState = z.infer<typeof conversationStateSchema>;
