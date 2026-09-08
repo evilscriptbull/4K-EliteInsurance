@@ -7,6 +7,7 @@ export interface Associate {
   name: string;
   email: string;
   active: boolean;
+  passwordSetAt: Date | null;
 }
 
 /**
@@ -29,4 +30,16 @@ export async function getAssociate(id: string): Promise<Associate | null> {
   if (!db) return null;
   const rows = await db.select().from(associatesTable).where(eq(associatesTable.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Called by /api/staff/complete-setup once updateUser() has actually
+ * succeeded on /staff/set-password — this, not Supabase's own
+ * email_confirmed_at/last_sign_in_at, is the real signal that someone
+ * finished onboarding (see schema.ts's comment on `passwordSetAt` for why).
+ */
+export async function markPasswordSet(id: string): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  await db.update(associatesTable).set({ passwordSetAt: new Date() }).where(eq(associatesTable.id, id));
 }

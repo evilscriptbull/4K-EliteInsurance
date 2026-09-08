@@ -84,6 +84,20 @@ export default function SetPasswordPage() {
       setStatus("ready");
       return;
     }
+
+    // Record real completion in our own associates table — see
+    // /api/staff/complete-setup for why this can't be Supabase's own
+    // email_confirmed_at/last_sign_in_at. Not fatal if it fails; the
+    // associate can still use their new password either way.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (token) {
+      await fetch("/api/staff/complete-setup", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+
     setStatus("done");
   }
 

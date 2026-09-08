@@ -78,27 +78,31 @@ if (listError) throw listError;
 for (const person of targets) {
   const existing = existingUsersPage.users.find((u) => u.email === person.email);
 
-  // A user who never confirmed their invite (e.g. the link expired before
-  // they clicked it) can't be re-invited via inviteUserByEmail — Supabase
-  // rejects it as "already registered," and there's no official "resend
-  // invite" API. Since they never actually finished setting up the
-  // account, deleting the stale record and inviting fresh is the clean
-  // fix — nothing of theirs is lost, because nothing was ever created.
-  if (existing && !existing.email_confirmed_at) {
+  // Whether to skip is decided from OUR OWN password_set_at column, never
+  // Supabase's email_confirmed_at/last_sign_in_at — those get set the
+  // moment an invite link is merely *fetched*, which corporate email
+  // security scanners (e.g. Microsoft Defender Safe Links) do
+  // automatically, before the real recipient ever opens the email. That's
+  // exactly what silently broke the first real invite sent from this
+  // script — see docs/backlog.md. password_set_at only gets set by
+  // /api/staff/complete-setup, after a real password update actually
+  // succeeds, so it can't be spoofed by a bot fetching a URL.
+  if (existing) {
+    const [row] = await sql`select password_set_at from associates where id = ${existing.id}`;
+    if (row?.password_set_at) {
+      console.log(`[associates] ${person.name} <${person.email}> already finished setup — skipping invite.`);
+      continue;
+    }
+    // Never actually completed (or Supabase's own state is stale/wrong,
+    // as above) — Supabase refuses to re-invite an existing email, and
+    // there's no official "resend invite" API, so clear it and start
+    // clean. Nothing of theirs is lost; they never finished setting up.
     const { error: deleteError } = await supabase.auth.admin.deleteUser(existing.id);
     if (deleteError) {
       console.error(`[associates] Couldn't clear ${person.email}'s stale invite:`, deleteError.message);
       continue;
     }
-    console.log(`[associates] Cleared ${person.name}'s expired, never-completed invite.`);
-  } else if (existing) {
-    console.log(`[associates] ${person.name} <${person.email}> already has an active account (${existing.id}) — skipping invite.`);
-    await sql`
-      insert into associates (id, name, email, active)
-      values (${existing.id}, ${person.name}, ${person.email}, true)
-      on conflict (id) do update set name = excluded.name, email = excluded.email, active = true
-    `;
-    continue;
+    console.log(`[associates] Cleared ${person.name}'s never-completed invite.`);
   }
 
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(person.email, { redirectTo });

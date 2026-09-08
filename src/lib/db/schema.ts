@@ -38,12 +38,23 @@ export const contactMessages = pgTable("contact_messages", {
  * (auth.users.id) for that person — this table only holds the profile
  * fields Supabase Auth doesn't, not credentials. Seeded from
  * scripts/seed-associates.mjs.
+ *
+ * `passwordSetAt` is our own source of truth for "did this person actually
+ * finish setup" — deliberately NOT derived from Supabase's
+ * email_confirmed_at/last_sign_in_at, because those get set the moment an
+ * invite link is merely *fetched*, which corporate email security scanners
+ * (e.g. Microsoft Defender Safe Links) do automatically and silently,
+ * before the real recipient ever sees the email. Set by
+ * /api/staff/complete-setup once /staff/set-password's updateUser() call
+ * actually succeeds — see that route for why this can't be trusted from
+ * Supabase's own metadata.
  */
 export const associates = pgTable("associates", {
   id: uuid("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   active: boolean("active").notNull().default(true),
+  passwordSetAt: timestamp("password_set_at", { withTimezone: true }),
 });
 
 /**

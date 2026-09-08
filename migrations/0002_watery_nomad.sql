@@ -1,0 +1,1 @@
+ALTER TABLE "associates" ADD COLUMN "password_set_at" timestamp with time zone;
