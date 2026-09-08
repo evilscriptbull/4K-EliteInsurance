@@ -43,3 +43,39 @@ export async function notifyNewClaim(claim: StoredClaim): Promise<void> {
   const text = `New claim filed: ${claim.firstName} ${claim.lastName}, policy ${claim.policyNumber}`;
   await sendSms(to, text);
 }
+
+/**
+ * Fires the moment a Quick Quote Chat starts — before any answers exist,
+ * so there's no lead data yet to include. All associates share one notify
+ * number for now (see docs/backlog.md), so this is a heads-up, not a claim
+ * mechanism; claiming happens in the staff dashboard once it's built.
+ */
+export async function notifyScriptedChatStarted(familySlug: string, conversationId: string): Promise<void> {
+  const to = getNotifyNumber();
+  if (!to) return;
+
+  const text = `New Quick Quote Chat started (${familySlug}). No details yet — conversation ${conversationId.slice(0, 8)}.`;
+  await sendSms(to, text);
+}
+
+/**
+ * Fires when a Quick Quote Chat finishes with nobody having claimed it —
+ * this text is currently the *only* place an associate learns what the
+ * customer actually said (no staff dashboard yet), so it's deliberately
+ * more detailed than notifyNewLead's one-liner above.
+ */
+export async function notifyScriptedChatLead(lead: Lead): Promise<void> {
+  const to = getNotifyNumber();
+  if (!to) return;
+
+  const contactInfo = lead.contact.phone ?? lead.contact.email ?? "no contact info";
+  const asset = lead.insuredAssets[0]?.description ?? lead.insuredAssets[0]?.kind;
+  const lines = [
+    `Quick Quote Chat completed, unclaimed (${lead.leadScoreTier}) — ${lead.line}`,
+    `${lead.contact.firstName} ${lead.contact.lastName} — ${contactInfo}`,
+    asset ? `Asset: ${asset}` : null,
+    lead.intent,
+  ].filter((line): line is string => Boolean(line));
+
+  await sendSms(to, lines.join("\n"));
+}

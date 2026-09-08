@@ -113,8 +113,13 @@ function buildInsuredAssets(input: QuoteFormInput): Lead["insuredAssets"] {
  * leadSchema.parse as the hard validation gate. Contact and Claim
  * submissions are NOT mapped here — they're stored via their own simple
  * schemas (see lib/schemas/forms.ts, lib/claims/store.ts).
+ *
+ * `conversationSummary` defaults to the static-form text below, but the
+ * Scripted Lead Warmer (lib/scripted-chat/finalize.ts) overrides it with an
+ * accurate description of the actual conversation — reusing this mapper
+ * unchanged instead of duplicating it, so both paths stay in sync.
  */
-export function quoteFormToLead(input: QuoteFormInput, source: LeadSource = {}): Lead {
+export function quoteFormToLead(input: QuoteFormInput, source: LeadSource = {}, conversationSummary?: string): Lead {
   const line = resolveLine(input);
 
   const draft: Omit<Lead, "leadScore" | "leadScoreTier"> = {
@@ -134,7 +139,7 @@ export function quoteFormToLead(input: QuoteFormInput, source: LeadSource = {}):
     insuredAssets: buildInsuredAssets(input),
     renewalUrgency: {},
     crossSellPotential: [],
-    conversationSummary: `Submitted via static ${input.family} quote form (no AI conversation).`,
+    conversationSummary: conversationSummary ?? `Submitted via static ${input.family} quote form (no AI conversation).`,
     missingFields: [],
     source,
   };
