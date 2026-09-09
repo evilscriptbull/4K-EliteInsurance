@@ -113,7 +113,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
 
   if (status === "unavailable" || status === "error") {
     return (
-      <Card>
+      <Card className="bg-background text-foreground">
         <p className="text-sm text-brand-700">
           Quick chat isn&apos;t available right now — please use the form below instead.
         </p>
@@ -122,7 +122,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
   }
 
   return (
-    <Card className="flex flex-col gap-4">
+    <Card className="flex flex-col gap-4 bg-background text-foreground">
       <div className="flex max-h-96 flex-col gap-3 overflow-y-auto">
         {transcript.map((entry, index) => (
           <div

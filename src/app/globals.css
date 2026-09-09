@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 :root {
+  /*
+   * This site has one fixed light design — no dark variant. Without this,
+   * a visitor's OS/browser dark-mode preference can still leak into native
+   * control chrome (scrollbars, date pickers, etc.) that isn't otherwise
+   * styled. Not the fix for invisible input text (that was Tailwind
+   * Preflight's `color: inherit` on form elements combined with a Card
+   * missing `text-foreground` — see ChatWidget.tsx) but worth having
+   * regardless.
+   */
+  color-scheme: light;
+
   /* Brand — deep navy (trust, insurance-industry convention) */
   --color-brand-50: #f0f5fb;
   --color-brand-100: #dbe7f5;
