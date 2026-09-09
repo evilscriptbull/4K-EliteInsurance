@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdminClient } from "@/lib/supabase/adminClient";
+import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { markPasswordSet } from "@/lib/associates/store";
 
 /**
- * Called by /staff/set-password right after updateUser() succeeds. Records
+ * Called by /staff/join right after updateUser() succeeds. Records
  * completion in our own `associates` table rather than trusting Supabase's
  * email_confirmed_at/last_sign_in_at — those get set the moment an invite
  * link is merely fetched, which corporate email security scanners do
@@ -14,22 +14,9 @@ import { markPasswordSet } from "@/lib/associates/store";
  * Supabase's own metadata wasn't.
  */
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
-  if (!accessToken) {
-    return NextResponse.json({ ok: false, error: "missing bearer token" }, { status: 401 });
-  }
+  const auth = await verifyStaffRequest(request);
+  if ("error" in auth) return auth.error;
 
-  const admin = getSupabaseAdminClient();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "not-configured" }, { status: 503 });
-  }
-
-  const { data, error } = await admin.auth.getUser(accessToken);
-  if (error || !data.user) {
-    return NextResponse.json({ ok: false, error: "invalid session" }, { status: 401 });
-  }
-
-  await markPasswordSet(data.user.id);
+  await markPasswordSet(auth.userId);
   return NextResponse.json({ ok: true });
 }

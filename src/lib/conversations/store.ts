@@ -131,6 +131,57 @@ export async function claimConversation(id: string, associateId: string): Promis
   return true;
 }
 
+/**
+ * Undoes a claim — only succeeds if the caller is the one who claimed it.
+ * Puts the conversation back in the live queue as unclaimed.
+ */
+export async function releaseConversation(id: string, associateId: string): Promise<boolean> {
+  const now = new Date();
+  const db = getDb();
+  if (db) {
+    const result = await db
+      .update(conversationsTable)
+      .set({ claimedBy: null, claimedAt: null, status: "in-progress", updatedAt: now })
+      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.claimedBy, associateId)))
+      .returning({ id: conversationsTable.id });
+    return result.length > 0;
+  }
+  const existing = inMemoryConversations.get(id);
+  if (!existing || existing.claimedBy !== associateId) return false;
+  inMemoryConversations.set(id, {
+    ...existing,
+    claimedBy: null,
+    claimedAt: null,
+    status: "in-progress",
+    updatedAt: now.toISOString(),
+  });
+  return true;
+}
+
+/**
+ * Closes out a claimed conversation the associate handled directly (e.g.
+ * by phone) — drops it out of both the live queue and needs-follow-up,
+ * same as a resolved inbox item. Only succeeds if the caller is the one
+ * who claimed it. No Lead is created here — the associate already has
+ * full context from handling it themselves.
+ */
+export async function completeConversation(id: string, associateId: string): Promise<boolean> {
+  const now = new Date();
+  const db = getDb();
+  if (db) {
+    const result = await db
+      .update(conversationsTable)
+      .set({ status: "completed-claimed", updatedAt: now })
+      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.claimedBy, associateId)))
+      .returning({ id: conversationsTable.id });
+    return result.length > 0;
+  }
+  const existing = inMemoryConversations.get(id);
+  if (!existing || existing.claimedBy !== associateId) return false;
+  inMemoryConversations.set(id, { ...existing, status: "completed-claimed", updatedAt: now.toISOString() });
+  return true;
+}
+
 /** Completed-unclaimed and abandoned conversations — the "needs follow-up" dashboard view. */
 export async function listNeedsFollowUp(): Promise<readonly StoredConversation[]> {
   const db = getDb();

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
-import { claimConversation } from "@/lib/conversations/store";
+import { completeConversation } from "@/lib/conversations/store";
 
-const claimSchema = z.object({
+const completeSchema = z.object({
   conversationId: z.string().min(1),
 });
 
@@ -18,11 +18,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "invalid JSON" }, { status: 400 });
   }
 
-  const parsed = claimSchema.safeParse(body);
+  const parsed = completeSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const claimed = await claimConversation(parsed.data.conversationId, auth.userId);
-  return NextResponse.json({ ok: true, claimed });
+  const completed = await completeConversation(parsed.data.conversationId, auth.userId);
+  return NextResponse.json({ ok: true, completed });
 }

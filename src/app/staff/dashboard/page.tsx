@@ -7,6 +7,7 @@ import { getQuoteFormFamily } from "@/lib/config/quote-forms";
 import { Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { ClaimButton } from "@/components/staff/ClaimButton";
+import { ClaimedActions } from "@/components/staff/ClaimedActions";
 import { SignOutButton } from "@/components/staff/SignOutButton";
 
 function familyLabel(slug: string): string {
@@ -15,6 +16,28 @@ function familyLabel(slug: string): string {
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+/** "vehicleYear" -> "Vehicle Year" */
+function humanizeFieldName(key: string): string {
+  return key.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
+}
+
+function CollectedAnswers({ fields }: { fields: Record<string, unknown> }) {
+  const entries = Object.entries(fields).filter(([, value]) => value !== undefined && value !== "");
+  if (entries.length === 0) {
+    return <p className="mt-2 text-xs italic text-brand-500">No answers collected yet.</p>;
+  }
+  return (
+    <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+      {entries.map(([key, value]) => (
+        <div key={key}>
+          <dt className="text-brand-500">{humanizeFieldName(key)}</dt>
+          <dd className="text-brand-800">{String(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export default async function StaffDashboardPage() {
@@ -71,7 +94,12 @@ export default async function StaffDashboardPage() {
               </Card>
             )}
             {live.map((conversation) => (
-              <LiveCard key={conversation.id} conversation={conversation} claimedByName={conversation.claimedBy ? associateNames.get(conversation.claimedBy) : undefined} />
+              <LiveCard
+                key={conversation.id}
+                conversation={conversation}
+                claimedByName={conversation.claimedBy ? associateNames.get(conversation.claimedBy) : undefined}
+                currentUserId={user.id}
+              />
             ))}
           </div>
         </section>
@@ -99,21 +127,27 @@ export default async function StaffDashboardPage() {
 function LiveCard({
   conversation,
   claimedByName,
+  currentUserId,
 }: {
   conversation: StoredConversation;
   claimedByName?: string;
+  currentUserId: string;
 }) {
+  const claimedByMe = conversation.claimedBy === currentUserId;
+
   return (
     <Card className="bg-background text-foreground">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="font-serif text-lg font-semibold text-brand-900">{familyLabel(conversation.familySlug)}</p>
           <p className="text-xs text-brand-600">
-            {conversation.status === "claimed" ? `Claimed by ${claimedByName ?? "someone"}` : "Unclaimed"} · Started{" "}
-            {formatTime(conversation.createdAt)}
+            {conversation.status === "claimed" ? `Claimed by ${claimedByMe ? "you" : (claimedByName ?? "someone")}` : "Unclaimed"} ·
+            Started {formatTime(conversation.createdAt)}
           </p>
+          <CollectedAnswers fields={conversation.state.collectedFields as Record<string, unknown>} />
         </div>
         {conversation.status !== "claimed" && <ClaimButton conversationId={conversation.id} />}
+        {claimedByMe && <ClaimedActions conversationId={conversation.id} />}
       </div>
     </Card>
   );
