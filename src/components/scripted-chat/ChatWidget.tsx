@@ -29,7 +29,8 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
   const [inputValue, setInputValue] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("loading");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -64,8 +65,21 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
   }, [familySlug]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only the transcript panel itself, not scrollIntoView() — that
+    // scrolls every ancestor scroll container, including the whole page,
+    // which was reported as "the page scrolls" on every send.
+    const el = transcriptRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [transcript]);
+
+  useEffect(() => {
+    // autoFocus only fires on an element's first mount. Consecutive
+    // text-type questions reuse the same <input> (same position, same
+    // type) across renders, so autoFocus never re-fires after the first
+    // question — reported as the answer box "getting unselected" on every
+    // send. Focus explicitly whenever the active step changes instead.
+    inputRef.current?.focus();
+  }, [step]);
 
   async function submitAnswer(rawAnswer: unknown, label: string) {
     if (!conversationId || !step) return;
@@ -123,7 +137,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
 
   return (
     <Card className="flex flex-col gap-4 bg-background text-foreground">
-      <div className="flex max-h-96 flex-col gap-3 overflow-y-auto">
+      <div ref={transcriptRef} className="flex max-h-96 flex-col gap-3 overflow-y-auto">
         {transcript.map((entry, index) => (
           <div
             key={index}
@@ -137,7 +151,6 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
           </div>
         ))}
         {status === "loading" && <p className="text-sm text-brand-500">Loading…</p>}
-        <div ref={bottomRef} />
       </div>
 
       {errors.length > 0 && <p className="text-sm text-red-600">{errors.join(" ")}</p>}
@@ -160,12 +173,12 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
           ) : (
             <form onSubmit={handleTextSubmit} className="flex gap-2">
               <input
+                ref={inputRef}
                 type={step.type === "date" ? "date" : step.type === "number" ? "number" : "text"}
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
                 className="flex-1 rounded-full border border-border px-4 py-2 text-sm"
                 placeholder="Type your answer…"
-                autoFocus
               />
               <Button type="submit" size="sm">
                 Send

@@ -26,6 +26,15 @@ export interface ScriptedStep {
   /** Validates the raw answer for this step; on success, its output is what gets stored. */
   schema: z.ZodTypeAny;
   optional?: boolean;
+  /**
+   * When true, `schema`'s parsed output must be a plain object, and its
+   * keys are merged directly into the answers so far instead of being
+   * nested under `field` — for a single question that fills more than one
+   * target-schema field at once (e.g. "What's your name?" -> firstName +
+   * lastName). `field` is still required but only used for step-tracking,
+   * not as an answers key.
+   */
+  spreadFields?: boolean;
   /** Given all answers collected so far (including this step's), returns the next step id, or null if the flow is complete. */
   next: (answers: Record<string, unknown>) => string | null;
 }

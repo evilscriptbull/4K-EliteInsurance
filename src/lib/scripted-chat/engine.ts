@@ -39,6 +39,9 @@ export function answerStep(
     return { status: "invalid", step, errors: parsed.error.issues.map((issue) => issue.message) };
   }
 
+  if (step.spreadFields) {
+    return advance(flow, step, { ...answersSoFar, ...(parsed.data as Record<string, unknown>) });
+  }
   return advance(flow, step, { ...answersSoFar, [step.field]: parsed.data });
 }
 

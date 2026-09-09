@@ -96,22 +96,24 @@ export const autoFlow: ScriptedFlow = {
       type: "text",
       optional: true,
       schema: z.string().min(1),
-      next: () => "firstName",
+      next: () => "fullName",
     },
     {
-      id: "firstName",
-      field: "firstName",
-      prompt: "Almost done — what's your first name?",
+      id: "fullName",
+      field: "fullName",
+      prompt: "Almost done — what's your first and last name?",
       type: "text",
-      schema: z.string().min(1, "Enter your first name."),
-      next: () => "lastName",
-    },
-    {
-      id: "lastName",
-      field: "lastName",
-      prompt: "And your last name?",
-      type: "text",
-      schema: z.string().min(1, "Enter your last name."),
+      spreadFields: true,
+      schema: z
+        .string()
+        .trim()
+        .refine((value) => value.split(/\s+/).filter(Boolean).length >= 2, {
+          message: "Enter both a first and last name.",
+        })
+        .transform((value) => {
+          const parts = value.split(/\s+/).filter(Boolean);
+          return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+        }),
       next: () => "phone",
     },
     {
