@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Lead } from "@/lib/schemas/lead";
 import { getDb } from "@/lib/db/client";
 import { leads as leadsTable } from "@/lib/db/schema";
@@ -35,4 +35,13 @@ export async function getLeads(): Promise<readonly Lead[]> {
     return rows.map((row) => row.data as Lead);
   }
   return inMemoryLeads;
+}
+
+export async function getLeadById(id: string): Promise<Lead | null> {
+  const db = getDb();
+  if (db) {
+    const rows = await db.select().from(leadsTable).where(eq(leadsTable.id, id)).limit(1);
+    return (rows[0]?.data as Lead) ?? null;
+  }
+  return inMemoryLeads.find((lead) => lead.id === id) ?? null;
 }
