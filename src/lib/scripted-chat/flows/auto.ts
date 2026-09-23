@@ -8,10 +8,9 @@ import type { ScriptedFlow } from "@/lib/scripted-chat/types";
  * scope — see docs/backlog.md), parse directly with quoteFormSchema and
  * flow through the existing quoteFormToLead() mapper unchanged.
  *
- * DRAFT COPY — not yet reviewed/approved by Chaz Goodin (compliance
- * approver, agency.complianceApprover). Per the locked-in plan decision,
- * this flow must not be enabled for real customer traffic until he's
- * signed off on this exact wording.
+ * Script wording signed off by Chaz Goodin (compliance approver,
+ * agency.complianceApprover) on 2026-09-23 — approved for real customer
+ * traffic.
  */
 export const autoFlow: ScriptedFlow = {
   slug: "auto",
