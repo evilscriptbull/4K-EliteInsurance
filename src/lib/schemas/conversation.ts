@@ -8,8 +8,17 @@ import { insuranceLines } from "@/lib/config/agency";
  * preserving state — not yet built, this schema is ready for it).
  */
 
+/**
+ * @deprecated The transcript now lives in the conversation_messages table
+ * (src/lib/conversations/messages.ts — appendMessage()/listMessages()),
+ * one row per message, so it can be appended atomically and delivered live
+ * via Realtime Broadcast. This schema is kept only so historical rows'
+ * `data.messages` (written before this change) still validate; new code
+ * must not read or write it — new conversations always persist `messages: []`.
+ */
 export const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
+/** @deprecated See messageRoleSchema's note above. */
 export const messageSchema = z.object({
   role: messageRoleSchema,
   content: z.string(),

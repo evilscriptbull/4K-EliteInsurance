@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, text, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, uuid, timestamp, text, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
 
 /**
  * Durable storage for the 3 form-submission types. Deliberately JSONB +
@@ -76,3 +76,34 @@ export const conversations = pgTable("conversations", {
   leadId: uuid("lead_id"),
   data: jsonb("data").notNull(),
 });
+
+/**
+ * One row per chat message (customer answer, scripted bot prompt, human
+ * associate message, or a system hand-off notice) — replaces storing the
+ * transcript inside conversations.data.messages, which was a full-column
+ * overwrite (updateConversation()) with no atomic append: a real race once
+ * both a customer and an associate can write near-simultaneously (see the
+ * live-takeover plan, docs/backlog.md). `authorAssociateId` is set only
+ * when role === "associate"; null otherwise.
+ *
+ * RLS is enabled with NO policies — default-deny for every role, including
+ * `authenticated`. This table holds customer PII (names, phone, DOB,
+ * vehicle info) and customers hold no Supabase Auth session, so it must
+ * only ever be touched by the service-role admin client server-side, or
+ * delivered live via Realtime Broadcast on a per-conversation channel
+ * (never postgres_changes, and never a client-side SELECT policy).
+ */
+export const conversationMessages = pgTable(
+  "conversation_messages",
+  {
+    id: uuid("id").primaryKey(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // "user" | "assistant" | "system" | "associate"
+    content: text("content").notNull(),
+    authorAssociateId: uuid("author_associate_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("conversation_messages_conversation_id_created_at_idx").on(table.conversationId, table.createdAt)],
+);
