@@ -29,6 +29,13 @@
       "when": 1790194671560,
       "tag": "0003_round_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790258553572,
+      "tag": "0004_enable_conversations_realtime",
+      "breakpoints": true
     }
   ]
 }
