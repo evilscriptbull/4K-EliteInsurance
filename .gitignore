@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# raw source photo/logo dump -- curated subset lives in public/images/,
+# committed via src/lib/config/media.ts. See docs/architecture.md ("Media").
+/public/photos/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
