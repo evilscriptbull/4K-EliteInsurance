@@ -5,6 +5,7 @@ import { CTABanner } from "@/components/ui/CTABanner";
 import { RelatedLines } from "@/components/marketing/RelatedLines";
 import { LandingPageViewTracker } from "@/components/marketing/LandingPageViewTracker";
 import { CheckIcon } from "@/components/icons/ui";
+import { InsuranceLineIcon } from "@/components/icons/InsuranceLineIcon";
 import { agency, priorityLines, type InsuranceLine } from "@/lib/config/agency";
 import { resolveQuoteFormFamily } from "@/lib/config/quote-forms";
 
@@ -53,7 +54,10 @@ export function LineLandingPage({
               Top-Performing Line
             </span>
           )}
-          <h1 className="font-serif text-4xl font-semibold sm:text-5xl">{heading}</h1>
+          <div className="flex items-center gap-4">
+            <InsuranceLineIcon line={insuranceLine} className="size-11 shrink-0 text-accent-400" />
+            <h1 className="font-serif text-4xl font-semibold sm:text-5xl">{heading}</h1>
+          </div>
           <p className="mt-4 text-lg text-brand-100">{intro}</p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Button href={quoteHref} size="lg">
