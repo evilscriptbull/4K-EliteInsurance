@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { ClaimButton } from "@/components/staff/ClaimButton";
 import { ClaimedActions } from "@/components/staff/ClaimedActions";
 import { SignOutButton } from "@/components/staff/SignOutButton";
+import { DashboardLiveRefresh } from "@/components/staff/DashboardLiveRefresh";
 
 function familyLabel(slug: string): string {
   return getQuoteFormFamily(slug)?.label ?? slug;
@@ -75,6 +76,7 @@ export default async function StaffDashboardPage() {
 
   return (
     <Section background="brand">
+      <DashboardLiveRefresh />
       <div className="mx-auto max-w-4xl">
         <div className="flex items-center justify-between">
           <h1 className="font-serif text-3xl font-semibold sm:text-4xl">
