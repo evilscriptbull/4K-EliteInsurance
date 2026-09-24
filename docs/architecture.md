@@ -139,7 +139,7 @@ Not yet built: the restaurant-insurance worked example from `/new-page-2` stays 
 
 ## Icons
 
-Custom SVG icon library in `src/components/icons/` — drawn for this site, not a stock set, so there's no icon dependency. 62 icons in three modules: `ui.tsx` (navigation, status, contact/communication), `coverage.tsx` (one drawing per `InsuranceLine`, with the collector-car roadster deliberately a different silhouette from the everyday car), and `features.tsx` (collector-car perks like agreed value/roadside/spare parts/trip interruption/pets, plus trust and process icons).
+Custom SVG icon library in `src/components/icons/` — drawn for this site, not a stock set, so there's no icon dependency. 62 icons in three modules: `ui.tsx` (navigation, status, contact/communication), `coverage.tsx` (one drawing per `InsuranceLine`, with the collector-car roadster deliberately a different silhouette from the everyday car), and `features.tsx` (collector-car perks like agreed value/roadside/spare parts/trip interruption/pets, plus trust and process icons). A fourth, `brand.tsx`, holds a single icon: `BrandMarkIcon`, a twin-peak mark used in the Header/Footer — drawn fresh rather than importing one of the old site's raster logo files (see "Media" below), so it recolors with `currentColor` on any background instead of needing separate light/dark exports.
 
 **Conventions** (enforced by the shared `Icon` base in `Icon.tsx`): 24×24 grid, 1.5 stroke, round caps/joins, color from `currentColor` (`text-*`), 24px unless a `size-*` class overrides it. Icons are decorative (`aria-hidden`) unless given a `title`. Each icon is a named export (`<PhoneIcon />`), so client components only bundle what they import. `InsuranceLineIcon.tsx` maps every `InsuranceLine` to an icon as a full `Record` — adding a line fails the type check until it gets one — and `<InsuranceLineIcon line={…} />` covers data-driven markup.
 
@@ -148,3 +148,11 @@ Custom SVG icon library in `src/components/icons/` — drawn for this site, not 
 **Reference page:** `/design/icons` shows every icon (outline + duotone, on white and navy) and the insurance-line mapping. It 404s when `VERCEL_ENV === "production"` (verified: prerenders with status 404 + `noindex`), so it's visible locally and on Vercel preview deployments for review, never on the live site.
 
 Not included on purpose: Facebook/Instagram/LinkedIn marks. Those are trademarks with brand guidelines that require their official artwork — same caution as the carrier logos (`docs/open-questions.md`) — so use each platform's brand-kit asset rather than a redrawn one.
+
+## Media
+
+Real photos/logos, curated **2026-09-24** from the old site's asset dump at `public/photos/Elite Media/` — kept locally, gitignored, never committed, since it's 90+ files: multiple headshot attempts per person, two employees no longer with the agency, several off-brand/exploratory logo concepts, and print-resolution originals (several MB each).
+
+Only the chosen files are copied into `public/images/` (downscaled with `sharp` — portraits capped at 640px tall, the hero shot at 1600px wide) and referenced from `src/lib/config/media.ts`, which is the only file anything else should import these paths from. Covers: headshots for all 8 current `team` members (matched 1:1 by a `"<Name> Professional Headshot"` naming convention that happened to exist for exactly that roster), logos for 4 of the 5 confirmed `carriers` (no file for Builders Mutual), and one hero photo.
+
+Carrier logos are real trademarked marks, not the agency's own asset — same "confirm usage rights before treating as final" caveat as the pre-existing carrier-proof-point item (`docs/open-questions.md`).
