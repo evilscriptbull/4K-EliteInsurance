@@ -1,4 +1,6 @@
-import { agency } from "@/lib/config/agency";
+import Image from "next/image";
+import { agency, carriers, licensedStates } from "@/lib/config/agency";
+import { heroImage } from "@/lib/config/media";
 import { Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import { LineSelector } from "@/components/marketing/LineSelector";
@@ -7,6 +9,12 @@ import { CollectorCarAuthority } from "@/components/marketing/CollectorCarAuthor
 import { TeamGrid } from "@/components/marketing/TeamGrid";
 import { ReviewsLinkOut } from "@/components/marketing/ReviewsLinkOut";
 import { AiQuoteCta } from "@/components/marketing/AiQuoteCta";
+
+const trustStats = [
+  { value: agency.yearsInBusinessClaim, label: "of collector-car expertise" },
+  { value: `${licensedStates.length}`, label: "states licensed to write business" },
+  { value: `${carriers.length}+`, label: "A+ rated carrier partners" },
+] as const;
 
 export default function Home() {
   return (
@@ -31,6 +39,20 @@ export default function Home() {
               </Button>
             </div>
           </div>
+          <div className="relative hidden aspect-[4/3] overflow-hidden rounded-lg lg:block">
+            <Image src={heroImage} alt="" fill sizes="(min-width: 1024px) 40vw, 0px" className="object-cover" priority />
+          </div>
+        </div>
+      </Section>
+
+      <Section background="surface" className="py-10">
+        <div className="grid gap-6 text-center sm:grid-cols-3">
+          {trustStats.map((stat) => (
+            <div key={stat.label}>
+              <p className="font-serif text-3xl font-semibold text-brand-900">{stat.value}</p>
+              <p className="mt-1 text-sm text-brand-700">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </Section>
 

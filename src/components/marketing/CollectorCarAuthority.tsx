@@ -1,10 +1,20 @@
 import type { ReactNode } from "react";
 import { agency } from "@/lib/config/agency";
 import { Button } from "@/components/ui/Button";
+import { CogIcon, PawIcon, RouteIcon, TagIcon, TowTruckIcon } from "@/components/icons/features";
+import type { IconProps } from "@/components/icons/Icon";
 
 const defaultHeading = "Our Flagship: Collector Car Insurance";
 const defaultBody =
   "Founded on a passion for muscle cars, hot rods, and exotics, our collector vehicle program offers agreed value coverage that reflects what your vehicle is really worth. Coverage comes loaded with extras like Nationwide Roadside Assistance, spare parts coverage, trip interruption, and pet coverage — built by people who understand what these vehicles mean to their owners.";
+
+const perks: { icon: (props: IconProps) => ReactNode; label: string }[] = [
+  { icon: TagIcon, label: "Agreed value coverage" },
+  { icon: TowTruckIcon, label: "Nationwide Roadside Assistance" },
+  { icon: CogIcon, label: "Spare parts coverage" },
+  { icon: RouteIcon, label: "Trip interruption coverage" },
+  { icon: PawIcon, label: "Pet coverage" },
+];
 
 /**
  * Homepage-specific by default, but built to accept overrides so the future
@@ -38,11 +48,12 @@ export function CollectorCarAuthority({
       </div>
       <div className="rounded-lg border border-border bg-surface p-8">
         <ul className="space-y-3 text-brand-800">
-          <li>Agreed value coverage</li>
-          <li>Nationwide Roadside Assistance</li>
-          <li>Spare parts coverage</li>
-          <li>Trip interruption coverage</li>
-          <li>Pet coverage</li>
+          {perks.map(({ icon: PerkIcon, label }) => (
+            <li key={label} className="flex items-center gap-3">
+              <PerkIcon className="size-5 shrink-0 text-accent-600" />
+              {label}
+            </li>
+          ))}
         </ul>
       </div>
     </div>
