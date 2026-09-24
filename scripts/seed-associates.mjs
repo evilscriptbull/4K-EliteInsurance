@@ -16,7 +16,12 @@
 // DATABASE_URL in .env.local — see .env.example. The service role key is
 // required (not the anon key) because creating users via the Admin API
 // needs elevated privileges; never expose it client-side.
-process.loadEnvFile("C:\\Users\\cruze\\Code\\aiWork\\EliteInsurance\\.env.local");
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+// Relative to this script's own location, not a hardcoded machine path —
+// works from any checkout.
+process.loadEnvFile(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env.local"));
 
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";

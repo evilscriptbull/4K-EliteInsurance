@@ -4,7 +4,6 @@ import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { getConversation } from "@/lib/conversations/store";
 import { appendMessage } from "@/lib/conversations/messages";
 import { broadcastToConversation } from "@/lib/conversations/broadcast";
-import { getAssociate } from "@/lib/associates/store";
 
 const messageSchema = z.object({
   conversationId: z.string().min(1),
@@ -40,7 +39,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "not-claimed-by-you" }, { status: 409 });
   }
 
-  const associate = await getAssociate(auth.userId);
   const message = await appendMessage(conversationId, {
     role: "associate",
     content,
@@ -48,7 +46,7 @@ export async function POST(request: Request) {
   });
   await broadcastToConversation(conversationId, {
     name: "message",
-    payload: { ...message, authorName: associate?.name },
+    payload: { ...message, authorName: auth.associate.name },
   });
 
   return NextResponse.json({ ok: true });

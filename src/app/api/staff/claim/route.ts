@@ -4,7 +4,6 @@ import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { claimConversation } from "@/lib/conversations/store";
 import { appendMessage } from "@/lib/conversations/messages";
 import { broadcastToConversation } from "@/lib/conversations/broadcast";
-import { getAssociate } from "@/lib/associates/store";
 
 const claimSchema = z.object({
   conversationId: z.string().min(1),
@@ -30,8 +29,7 @@ export async function POST(request: Request) {
   const claimed = await claimConversation(conversationId, auth.userId);
 
   if (claimed) {
-    const associate = await getAssociate(auth.userId);
-    const associateName = associate?.name ?? "An agent";
+    const associateName = auth.associate.name;
     const message = await appendMessage(conversationId, {
       role: "system",
       content: `${associateName} has joined the chat.`,

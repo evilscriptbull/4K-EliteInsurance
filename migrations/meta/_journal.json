@@ -36,6 +36,13 @@
       "when": 1790258553572,
       "tag": "0004_enable_conversations_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790278500332,
+      "tag": "0005_active_associate_realtime_policy",
+      "breakpoints": true
     }
   ]
 }
