@@ -85,3 +85,12 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans);
 }
+
+/*
+ * Fill color for icon surfaces (see Duotone in src/components/icons/Icon.tsx):
+ * `duotone-accent-200`, `duotone-brand-700`, `duotone-[#abc]`. Inherited, so it
+ * can sit on a card or section as well as on the icon itself.
+ */
+@utility duotone-* {
+  --icon-duotone: --value(--color-*, [color]);
+}

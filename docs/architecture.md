@@ -136,3 +136,15 @@ Per the CRM/AMS pattern in the handoff doc: `website → AI service → normaliz
 **One remaining manual step (owner, not something I can do remotely):** Sanity gates Studio access behind CORS origin allowlisting per project. On first visiting `/studio`, Sanity shows an "Add CORS origin" prompt/link (to `sanity.io/manage`) — click it while logged into the Sanity account that owns the project, confirm "Allow credentials" is checked, and save. Needed once for `http://localhost:3000` (local dev) and again for the production domain once `/studio` is deployed live.
 
 Not yet built: the restaurant-insurance worked example from `/new-page-2` stays unpublished — per the agency owner, it's a structural reference for future posts rather than being published itself.
+
+## Icons
+
+Custom SVG icon library in `src/components/icons/` — drawn for this site, not a stock set, so there's no icon dependency. 62 icons in three modules: `ui.tsx` (navigation, status, contact/communication), `coverage.tsx` (one drawing per `InsuranceLine`, with the collector-car roadster deliberately a different silhouette from the everyday car), and `features.tsx` (collector-car perks like agreed value/roadside/spare parts/trip interruption/pets, plus trust and process icons).
+
+**Conventions** (enforced by the shared `Icon` base in `Icon.tsx`): 24×24 grid, 1.5 stroke, round caps/joins, color from `currentColor` (`text-*`), 24px unless a `size-*` class overrides it. Icons are decorative (`aria-hidden`) unless given a `title`. Each icon is a named export (`<PhoneIcon />`), so client components only bundle what they import. `InsuranceLineIcon.tsx` maps every `InsuranceLine` to an icon as a full `Record` — adding a line fails the type check until it gets one — and `<InsuranceLineIcon line={…} />` covers data-driven markup.
+
+**Duotone:** shapes wrapped in `<Duotone>` (a truck's cargo box, a shield, the camper's two-tone paint) fill with `--icon-duotone`, which the `duotone-{color}` utility in `globals.css` sets (`duotone-accent-200`, `duotone-brand-700`, …). It's inherited, so it can go on a card instead of each icon. Unset, icons stay outline-only.
+
+**Reference page:** `/design/icons` shows every icon (outline + duotone, on white and navy) and the insurance-line mapping. It 404s when `VERCEL_ENV === "production"` (verified: prerenders with status 404 + `noindex`), so it's visible locally and on Vercel preview deployments for review, never on the live site.
+
+Not included on purpose: Facebook/Instagram/LinkedIn marks. Those are trademarks with brand guidelines that require their official artwork — same caution as the carrier logos (`docs/open-questions.md`) — so use each platform's brand-kit asset rather than a redrawn one.
