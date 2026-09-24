@@ -14,7 +14,12 @@
 //    They exist in Sanity for Chaz Goodin (agency.complianceApprover) to
 //    review; flip `status` to "published" once approved and they'll appear
 //    on /blog automatically.
-process.loadEnvFile("C:\\Users\\cruze\\Code\\aiWork\\EliteInsurance\\.env.local");
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+// Relative to this script's own location, not a hardcoded machine path —
+// works from any checkout.
+process.loadEnvFile(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env.local"));
 
 import { createClient } from "@sanity/client";
 

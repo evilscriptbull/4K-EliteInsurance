@@ -115,12 +115,18 @@ export async function claimConversation(id: string, associateId: string): Promis
     const result = await db
       .update(conversationsTable)
       .set({ claimedBy: associateId, claimedAt: now, status: "claimed", updatedAt: now })
-      .where(and(eq(conversationsTable.id, id), isNull(conversationsTable.claimedBy)))
+      .where(
+        and(
+          eq(conversationsTable.id, id),
+          isNull(conversationsTable.claimedBy),
+          eq(conversationsTable.status, "in-progress"),
+        ),
+      )
       .returning({ id: conversationsTable.id });
     return result.length > 0;
   }
   const existing = inMemoryConversations.get(id);
-  if (!existing || existing.claimedBy) return false;
+  if (!existing || existing.claimedBy || existing.status !== "in-progress") return false;
   inMemoryConversations.set(id, {
     ...existing,
     claimedBy: associateId,

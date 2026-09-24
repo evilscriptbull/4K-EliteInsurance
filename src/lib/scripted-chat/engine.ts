@@ -5,7 +5,7 @@ export type EngineResult =
   | { status: "next"; step: ScriptedStep; answers: Record<string, unknown> }
   | { status: "complete"; answers: Record<string, unknown> };
 
-function findStep(flow: ScriptedFlow, stepId: string): ScriptedStep {
+export function findStep(flow: ScriptedFlow, stepId: string): ScriptedStep {
   const step = flow.steps.find((candidate) => candidate.id === stepId);
   if (!step) {
     throw new Error(`Scripted flow "${flow.slug}" has no step "${stepId}"`);

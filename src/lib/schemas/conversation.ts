@@ -49,6 +49,11 @@ export const conversationStateSchema = z.object({
   line: z.enum(insuranceLines).optional(), // set once the prospect's line is identified
   messages: z.array(messageSchema).default([]),
 
+  // The step id the server last confirmed this conversation was on — the
+  // /answer route checks the client's submitted stepId against this instead
+  // of trusting it outright, so a client can't skip/replay steps.
+  currentStepId: z.string().optional(),
+
   // Structured data collected so far, keyed by field name — partial and
   // growing over the course of the conversation. Reconciled into a Lead
   // (see lib/schemas/lead.ts) once enough fields are present or the

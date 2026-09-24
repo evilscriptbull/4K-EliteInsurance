@@ -61,6 +61,14 @@ export default async function StaffDashboardPage() {
   }
 
   const associate = await getAssociate(user.id);
+  if (!associate || !associate.active) {
+    return (
+      <Section background="brand">
+        <p className="text-white">You don&apos;t have staff dashboard access. Contact your administrator.</p>
+      </Section>
+    );
+  }
+
   const [live, needsFollowUp, associates] = await Promise.all([
     listLive(),
     listNeedsFollowUp(),
@@ -93,7 +101,7 @@ export default async function StaffDashboardPage() {
       <div className="mx-auto max-w-4xl">
         <div className="flex items-center justify-between">
           <h1 className="font-serif text-3xl font-semibold sm:text-4xl">
-            {associate ? `Welcome, ${associate.name.split(" ")[0]}` : "Dashboard"}
+            Welcome, {associate.name.split(" ")[0]}
           </h1>
           <SignOutButton />
         </div>

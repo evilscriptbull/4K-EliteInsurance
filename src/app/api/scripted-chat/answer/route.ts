@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
-import { answerStep } from "@/lib/scripted-chat/engine";
+import { answerStep, findStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
 import { scriptedAnswersToLead } from "@/lib/scripted-chat/finalize";
 import { getConversation, updateConversation } from "@/lib/conversations/store";
@@ -53,6 +53,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "no-flow-for-family" }, { status: 500 });
   }
 
+  // Never trust the client's own idea of where it is in the flow — a
+  // mismatch means a skipped/replayed step (or a stale tab), so hand back
+  // the real current step instead of acting on the wrong one.
+  if (conversation.state.currentStepId && conversation.state.currentStepId !== stepId) {
+    return NextResponse.json({
+      ok: true,
+      status: "stale-step",
+      step: toClientStep(findStep(flow, conversation.state.currentStepId)),
+    });
+  }
+
   const result = answerStep(flow, stepId, answer, conversation.state.collectedFields);
   const now = new Date().toISOString();
 
@@ -72,6 +83,7 @@ export async function POST(request: Request) {
       state: {
         ...conversation.state,
         updatedAt: now,
+        currentStepId: result.step.id,
         collectedFields: result.answers,
       },
     });
@@ -79,31 +91,45 @@ export async function POST(request: Request) {
   }
 
   // result.status === "complete"
-  const lead = scriptedAnswersToLead(conversation.familySlug, result.answers, conversation.state.source ?? {});
-  await addLead(lead);
+  try {
+    const lead = scriptedAnswersToLead(conversation.familySlug, result.answers, conversation.state.source ?? {});
+    await addLead(lead);
 
-  const closingMessageContent = "Thanks — we've got everything we need. An agent will follow up shortly.";
-  await appendMessage(conversationId, { role: "assistant", content: closingMessageContent });
+    const closingMessageContent = "Thanks — we've got everything we need. An agent will follow up shortly.";
+    await appendMessage(conversationId, { role: "assistant", content: closingMessageContent });
 
-  await updateConversation(conversationId, {
-    state: {
-      ...conversation.state,
-      updatedAt: now,
+    await updateConversation(conversationId, {
+      state: {
+        ...conversation.state,
+        updatedAt: now,
+        status: "completed-unclaimed",
+        collectedFields: result.answers,
+        leadId: lead.id,
+      },
       status: "completed-unclaimed",
-      collectedFields: result.answers,
       leadId: lead.id,
-    },
-    status: "completed-unclaimed",
-    leadId: lead.id,
-  });
+    });
 
-  await Promise.all([notifyScriptedChatLead(lead), sendQuoteConfirmationEmail(lead), pushLeadToEZLynx(lead)]);
+    await Promise.all([notifyScriptedChatLead(lead), sendQuoteConfirmationEmail(lead), pushLeadToEZLynx(lead)]);
 
-  return NextResponse.json({
-    ok: true,
-    status: "complete",
-    leadId: lead.id,
-    leadScoreTier: lead.leadScoreTier,
-    closingMessage: closingMessageContent,
-  });
+    return NextResponse.json({
+      ok: true,
+      status: "complete",
+      leadId: lead.id,
+      leadScoreTier: lead.leadScoreTier,
+      closingMessage: closingMessageContent,
+    });
+  } catch (error) {
+    // A mapper/schema mismatch here (e.g. a skipped-step edge case reaching
+    // "complete" with incomplete answers) must never surface as a raw 500 —
+    // the user's answer was already persisted above; fail into the same
+    // handled shape the widget already renders gracefully.
+    console.error(`[scripted-chat/answer] finalize failed for conversation ${conversationId}`, error);
+    return NextResponse.json({
+      ok: true,
+      status: "invalid",
+      step: toClientStep(findStep(flow, stepId)),
+      errors: ["Something went wrong finishing your quote — please try again or contact us directly."],
+    });
+  }
 }

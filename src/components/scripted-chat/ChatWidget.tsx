@@ -141,6 +141,15 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
       setTranscript((prev) => prev.slice(0, -1));
       return;
     }
+    if (json.status === "stale-step") {
+      // The server's idea of the current step didn't match ours (e.g. a
+      // second tab, or a request that raced a takeover) — silently correct
+      // to the real step instead of showing an error for something that
+      // isn't the customer's fault.
+      setStep(json.step);
+      setTranscript((prev) => prev.slice(0, -1));
+      return;
+    }
     if (json.status === "next") {
       setStep(json.step);
       setTranscript((prev) => [...prev, { role: "assistant", content: json.step.prompt }]);

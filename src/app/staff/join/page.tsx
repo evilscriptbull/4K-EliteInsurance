@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
@@ -105,7 +106,11 @@ export default function StaffJoinPage() {
 
           {status === "done" && (
             <p className="text-sm text-brand-700">
-              Your password is set. You can close this tab — sign-in for the sales dashboard is coming soon.
+              Your password is set.{" "}
+              <Link href="/staff/login" className="underline">
+                Sign in to the dashboard
+              </Link>
+              .
             </p>
           )}
 

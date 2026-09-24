@@ -6,7 +6,6 @@ import { toClientStep } from "@/lib/scripted-chat/serialize";
 import { createConversation } from "@/lib/conversations/store";
 import { appendMessage } from "@/lib/conversations/messages";
 import type { ConversationState } from "@/lib/schemas/conversation";
-import { notifyScriptedChatStarted } from "@/lib/notifications/leadNotify";
 
 const sourceSchema = z.object({
   utmSource: z.string().optional(),
@@ -54,6 +53,7 @@ export async function POST(request: Request) {
     updatedAt: now,
     status: "in-progress",
     messages: [],
+    currentStepId: firstStep.id,
     collectedFields: {},
     resumeConsent: false,
     source: parsed.data.source,
@@ -76,8 +76,6 @@ export async function POST(request: Request) {
   // wouldn't reliably keep the intro before the first prompt.
   await appendMessage(conversationId, { role: "assistant", content: flow.intro });
   await appendMessage(conversationId, { role: "assistant", content: firstStep.prompt });
-
-  await notifyScriptedChatStarted(flow.slug, conversationId);
 
   return NextResponse.json(
     { ok: true, conversationId, intro: flow.intro, step: toClientStep(firstStep) },
