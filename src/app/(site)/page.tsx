@@ -1,6 +1,4 @@
-import Image from "next/image";
 import { agency, carriers, licensedStates } from "@/lib/config/agency";
-import { heroImage } from "@/lib/config/media";
 import { Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import { LineSelector } from "@/components/marketing/LineSelector";
@@ -9,6 +7,7 @@ import { CollectorCarAuthority } from "@/components/marketing/CollectorCarAuthor
 import { TeamGrid } from "@/components/marketing/TeamGrid";
 import { ReviewsLinkOut } from "@/components/marketing/ReviewsLinkOut";
 import { AiQuoteCta } from "@/components/marketing/AiQuoteCta";
+import { HomeChatLauncher } from "@/components/marketing/HomeChatLauncher";
 
 const trustStats = [
   { value: agency.yearsInBusinessClaim, label: "of collector-car expertise" },
@@ -20,7 +19,7 @@ export default function Home() {
   return (
     <>
       <Section background="brand" className="py-20 md:py-28">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
           <div>
             <span className="text-sm font-semibold uppercase tracking-wide text-accent-300">
               Independent Insurance Agency · {agency.address.city}, {agency.address.state}
@@ -30,18 +29,13 @@ export default function Home() {
               Local, independent insurance advice for your home, auto, business, and the things you love most —
               backed by a flagship collector vehicle program with {agency.yearsInBusinessClaim} of experience.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Button href="/quote" size="lg">
-                Get a Quote in Minutes
-              </Button>
+            <div className="mt-8">
               <Button href="/contact" variant="outline" size="lg" className="border-white text-white hover:bg-brand-800">
                 Talk to an Agent
               </Button>
             </div>
           </div>
-          <div className="relative hidden aspect-[4/3] overflow-hidden rounded-lg lg:block">
-            <Image src={heroImage} alt="" fill sizes="(min-width: 1024px) 40vw, 0px" className="object-cover" priority />
-          </div>
+          <HomeChatLauncher />
         </div>
       </Section>
 
