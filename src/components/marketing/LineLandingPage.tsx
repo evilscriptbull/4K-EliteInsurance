@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { CTABanner } from "@/components/ui/CTABanner";
 import { RelatedLines } from "@/components/marketing/RelatedLines";
 import { LandingPageViewTracker } from "@/components/marketing/LandingPageViewTracker";
+import { CheckIcon } from "@/components/icons/ui";
 import { agency, priorityLines, type InsuranceLine } from "@/lib/config/agency";
 import { resolveQuoteFormFamily } from "@/lib/config/quote-forms";
 
@@ -80,9 +81,7 @@ export function LineLandingPage({
           <ul className="mt-6 grid gap-4 sm:grid-cols-2">
             {coveragePoints.map((point) => (
               <li key={point} className="flex gap-3 rounded-lg border border-border bg-surface p-4 text-brand-800">
-                <span aria-hidden="true" className="text-accent-600">
-                  ✓
-                </span>
+                <CheckIcon className="mt-0.5 size-5 shrink-0 text-accent-600" />
                 {point}
               </li>
             ))}
