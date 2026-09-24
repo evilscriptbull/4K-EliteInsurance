@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 import { getAssociate, listActiveAssociates } from "@/lib/associates/store";
 import { listLive, listNeedsFollowUp, type StoredConversation } from "@/lib/conversations/store";
+import { listMessages, type StoredMessage } from "@/lib/conversations/messages";
 import { getLeadById } from "@/lib/leads/store";
 import { getQuoteFormFamily } from "@/lib/config/quote-forms";
 import { Section } from "@/components/ui/Section";
@@ -10,6 +11,7 @@ import { ClaimButton } from "@/components/staff/ClaimButton";
 import { ClaimedActions } from "@/components/staff/ClaimedActions";
 import { SignOutButton } from "@/components/staff/SignOutButton";
 import { DashboardLiveRefresh } from "@/components/staff/DashboardLiveRefresh";
+import { LiveChatPanel } from "@/components/staff/LiveChatPanel";
 
 function familyLabel(slug: string): string {
   return getQuoteFormFamily(slug)?.label ?? slug;
@@ -74,6 +76,17 @@ export default async function StaffDashboardPage() {
     })),
   );
 
+  // Only fetched for conversations claimed by the viewer themselves — the
+  // live-chat panel needs full transcript context, but nobody else's
+  // dashboard card needs it (avoids an N+1 fetch across the whole queue).
+  const claimedByMeMessages = new Map<string, StoredMessage[]>(
+    await Promise.all(
+      live
+        .filter((conversation) => conversation.status === "claimed" && conversation.claimedBy === user.id)
+        .map(async (conversation) => [conversation.id, await listMessages(conversation.id)] as const),
+    ),
+  );
+
   return (
     <Section background="brand">
       <DashboardLiveRefresh />
@@ -101,6 +114,7 @@ export default async function StaffDashboardPage() {
                 conversation={conversation}
                 claimedByName={conversation.claimedBy ? associateNames.get(conversation.claimedBy) : undefined}
                 currentUserId={user.id}
+                initialMessages={claimedByMeMessages.get(conversation.id)}
               />
             ))}
           </div>
@@ -130,10 +144,12 @@ function LiveCard({
   conversation,
   claimedByName,
   currentUserId,
+  initialMessages,
 }: {
   conversation: StoredConversation;
   claimedByName?: string;
   currentUserId: string;
+  initialMessages?: StoredMessage[];
 }) {
   const claimedByMe = conversation.claimedBy === currentUserId;
 
@@ -147,6 +163,9 @@ function LiveCard({
             Started {formatTime(conversation.createdAt)}
           </p>
           <CollectedAnswers fields={conversation.state.collectedFields as Record<string, unknown>} />
+          {claimedByMe && initialMessages && (
+            <LiveChatPanel conversationId={conversation.id} initialMessages={initialMessages} />
+          )}
         </div>
         {conversation.status !== "claimed" && <ClaimButton conversationId={conversation.id} />}
         {claimedByMe && <ClaimedActions conversationId={conversation.id} />}
