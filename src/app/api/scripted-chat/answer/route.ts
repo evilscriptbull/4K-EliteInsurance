@@ -5,6 +5,7 @@ import { answerStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
 import { scriptedAnswersToLead } from "@/lib/scripted-chat/finalize";
 import { getConversation, updateConversation } from "@/lib/conversations/store";
+import { appendMessage } from "@/lib/conversations/messages";
 import { addLead } from "@/lib/leads/store";
 import { notifyScriptedChatLead } from "@/lib/notifications/leadNotify";
 import { sendQuoteConfirmationEmail } from "@/lib/notifications/emailNotify";
@@ -59,16 +60,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: "invalid", step: toClientStep(result.step), errors: result.errors });
   }
 
-  const userMessage = { role: "user" as const, content: String(answer), timestamp: now };
+  // The transcript lives in conversation_messages now, not
+  // conversation.state.messages (see src/lib/conversations/messages.ts) —
+  // appended as its own row per message, sequentially so ordering by
+  // createdAt is reliable, instead of overwriting the whole jsonb blob.
+  await appendMessage(conversationId, { role: "user", content: String(answer) });
 
   if (result.status === "next") {
-    const assistantMessage = { role: "assistant" as const, content: result.step.prompt, timestamp: now };
+    await appendMessage(conversationId, { role: "assistant", content: result.step.prompt });
     await updateConversation(conversationId, {
       state: {
         ...conversation.state,
         updatedAt: now,
         collectedFields: result.answers,
-        messages: [...conversation.state.messages, userMessage, assistantMessage],
       },
     });
     return NextResponse.json({ ok: true, status: "next", step: toClientStep(result.step) });
@@ -78,11 +82,8 @@ export async function POST(request: Request) {
   const lead = scriptedAnswersToLead(conversation.familySlug, result.answers, conversation.state.source ?? {});
   await addLead(lead);
 
-  const closingMessage = {
-    role: "assistant" as const,
-    content: "Thanks — we've got everything we need. An agent will follow up shortly.",
-    timestamp: now,
-  };
+  const closingMessageContent = "Thanks — we've got everything we need. An agent will follow up shortly.";
+  await appendMessage(conversationId, { role: "assistant", content: closingMessageContent });
 
   await updateConversation(conversationId, {
     state: {
@@ -91,7 +92,6 @@ export async function POST(request: Request) {
       status: "completed-unclaimed",
       collectedFields: result.answers,
       leadId: lead.id,
-      messages: [...conversation.state.messages, userMessage, closingMessage],
     },
     status: "completed-unclaimed",
     leadId: lead.id,
@@ -104,6 +104,6 @@ export async function POST(request: Request) {
     status: "complete",
     leadId: lead.id,
     leadScoreTier: lead.leadScoreTier,
-    closingMessage: closingMessage.content,
+    closingMessage: closingMessageContent,
   });
 }
