@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { completeConversation } from "@/lib/conversations/store";
+import { appendMessage } from "@/lib/conversations/messages";
+import { broadcastToConversation } from "@/lib/conversations/broadcast";
 
 const completeSchema = z.object({
   conversationId: z.string().min(1),
@@ -23,6 +25,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const completed = await completeConversation(parsed.data.conversationId, auth.userId);
+  const { conversationId } = parsed.data;
+  const completed = await completeConversation(conversationId, auth.userId);
+
+  if (completed) {
+    const message = await appendMessage(conversationId, {
+      role: "system",
+      content: "This conversation has been completed. Thanks for chatting with us!",
+    });
+    await broadcastToConversation(conversationId, { name: "message", payload: message });
+    await broadcastToConversation(conversationId, {
+      name: "control",
+      payload: { type: "handoff", reason: "completed" },
+    });
+  }
+
   return NextResponse.json({ ok: true, completed });
 }
