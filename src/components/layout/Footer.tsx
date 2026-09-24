@@ -4,6 +4,7 @@ import { disclaimers } from "@/lib/compliance/disclaimers";
 import { navItems } from "@/components/layout/nav-items";
 import { Container } from "@/components/ui/Container";
 import { ExternalLink } from "@/components/ui/ExternalLink";
+import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/icons/ui";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -13,22 +14,31 @@ export function Footer() {
       <Container className="grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <p className="font-serif text-lg font-semibold text-white">{agency.legalName}</p>
-          <p>{agency.address.street}</p>
-          <p>
-            {agency.address.city}, {agency.address.state} {agency.address.zip}
+          <p className="flex items-start gap-2">
+            <MapPinIcon className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {agency.address.street}
+              <br />
+              {agency.address.city}, {agency.address.state} {agency.address.zip}
+            </span>
           </p>
-          <p>{agency.hours}</p>
+          <p className="flex items-center gap-2">
+            <ClockIcon className="size-4 shrink-0" />
+            {agency.hours}
+          </p>
         </div>
 
         <div className="space-y-2">
           <p className="font-semibold text-white">Contact</p>
           <p>
-            <a href={`tel:${agency.phone}`} className="hover:text-white">
+            <a href={`tel:${agency.phone}`} className="flex items-center gap-2 hover:text-white">
+              <PhoneIcon className="size-4 shrink-0" />
               {agency.phoneDisplay}
             </a>
           </p>
           <p>
-            <a href={`mailto:${agency.email}`} className="hover:text-white">
+            <a href={`mailto:${agency.email}`} className="flex items-center gap-2 hover:text-white">
+              <MailIcon className="size-4 shrink-0" />
               {agency.email}
             </a>
           </p>
