@@ -9,17 +9,27 @@ import { getAssociate, type Associate } from "@/lib/associates/store";
  * that they're a current, active associate. Requiring the associate row
  * here, not just at the dashboard page, closes the gap for a deactivated
  * associate or any session obtained outside the invite flow.
+ *
+ * `deps` lets tests swap in fakes for the two network-touching calls
+ * without mocking modules — production call sites never pass it, so they
+ * get the real functions via the defaults.
  */
 export async function verifyStaffRequest(
   request: Request,
+  deps: {
+    getSupabaseAdminClient?: typeof getSupabaseAdminClient;
+    getAssociate?: typeof getAssociate;
+  } = {},
 ): Promise<{ userId: string; associate: Associate } | { error: NextResponse }> {
+  const { getSupabaseAdminClient: getAdmin = getSupabaseAdminClient, getAssociate: getAssoc = getAssociate } = deps;
+
   const authHeader = request.headers.get("authorization");
   const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
   if (!accessToken) {
     return { error: NextResponse.json({ ok: false, error: "missing bearer token" }, { status: 401 }) };
   }
 
-  const admin = getSupabaseAdminClient();
+  const admin = getAdmin();
   if (!admin) {
     return { error: NextResponse.json({ ok: false, error: "not-configured" }, { status: 503 }) };
   }
@@ -29,7 +39,7 @@ export async function verifyStaffRequest(
     return { error: NextResponse.json({ ok: false, error: "invalid session" }, { status: 401 }) };
   }
 
-  const associate = await getAssociate(data.user.id);
+  const associate = await getAssoc(data.user.id);
   if (!associate || !associate.active) {
     return { error: NextResponse.json({ ok: false, error: "not-an-associate" }, { status: 403 }) };
   }
