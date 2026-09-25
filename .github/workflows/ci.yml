@@ -18,6 +18,10 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
       - run: npm test
+      # `next build` generates .next/types (route-typed helpers like
+      # LayoutProps<T>/PageProps<T>) that a standalone `tsc --noEmit` needs
+      # to resolve — it must run after build, not before, on a clean
+      # checkout with no prior .next/ directory lying around.
       - run: npm run build
+      - run: npx tsc --noEmit
