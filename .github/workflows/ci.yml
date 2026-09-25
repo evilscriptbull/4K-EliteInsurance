@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      # `next build` generates .next/types (route-typed helpers like
+      # LayoutProps<T>/PageProps<T>) that a standalone `tsc --noEmit` needs
+      # to resolve — it must run after build, not before, on a clean
+      # checkout with no prior .next/ directory lying around.
+      - run: npm run build
+      - run: npx tsc --noEmit
