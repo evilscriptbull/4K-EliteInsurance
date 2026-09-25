@@ -69,7 +69,7 @@ export const conversations = pgTable("conversations", {
   id: uuid("id").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-  status: text("status").notNull(), // "in-progress" | "claimed" | "completed-unclaimed" | "completed-claimed" | "abandoned"
+  status: text("status").notNull(), // "in-progress" | "claimed" | "completed-unclaimed" | "completed-claimed" | "released" | "abandoned"
   familySlug: text("family_slug").notNull(),
   claimedBy: uuid("claimed_by"),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),

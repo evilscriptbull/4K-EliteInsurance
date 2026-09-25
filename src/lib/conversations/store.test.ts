@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   createConversation,
+  getConversation,
   claimConversation,
   releaseConversation,
   completeConversation,
+  mergeAnswer,
+  listNeedsFollowUp,
+  listLive,
   type StoredConversation,
   type ConversationStatus,
 } from "@/lib/conversations/store";
@@ -68,6 +72,17 @@ describe("releaseConversation", () => {
     expect(await releaseConversation(conversation.id, "associate-b")).toBe(false);
     expect(await releaseConversation(conversation.id, "associate-a")).toBe(true);
   });
+
+  it("transitions to released, not back to in-progress, and keeps claimedBy", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+    await claimConversation(conversation.id, "associate-a");
+    await releaseConversation(conversation.id, "associate-a");
+
+    const result = await getConversation(conversation.id);
+    expect(result?.status).toBe("released");
+    expect(result?.claimedBy).toBe("associate-a");
+  });
 });
 
 describe("completeConversation", () => {
@@ -78,5 +93,47 @@ describe("completeConversation", () => {
 
     expect(await completeConversation(conversation.id, "associate-b")).toBe(false);
     expect(await completeConversation(conversation.id, "associate-a")).toBe(true);
+  });
+});
+
+describe("listNeedsFollowUp / listLive", () => {
+  it("moves a released conversation into follow-up, out of the live queue", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+    await claimConversation(conversation.id, "associate-a");
+    await releaseConversation(conversation.id, "associate-a");
+
+    const [followUp, live] = await Promise.all([listNeedsFollowUp(), listLive()]);
+    expect(followUp.some((c) => c.id === conversation.id)).toBe(true);
+    expect(live.some((c) => c.id === conversation.id)).toBe(false);
+  });
+});
+
+describe("mergeAnswer", () => {
+  it("merges new fields and advances currentStepId when in-progress", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+
+    const merged = await mergeAnswer(conversation.id, {
+      currentStepId: "vehicleYear",
+      newFields: { personalOrCommercial: "personal" },
+    });
+    expect(merged).toBe(true);
+
+    const result = await getConversation(conversation.id);
+    expect(result?.state.currentStepId).toBe("vehicleYear");
+    expect(result?.state.collectedFields).toMatchObject({ personalOrCommercial: "personal" });
+  });
+
+  it("fails once the conversation is no longer in-progress", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+    await claimConversation(conversation.id, "associate-a");
+
+    const merged = await mergeAnswer(conversation.id, {
+      currentStepId: "vehicleYear",
+      newFields: { personalOrCommercial: "personal" },
+    });
+    expect(merged).toBe(false);
   });
 });
