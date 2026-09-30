@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { ConversationState } from "@/lib/schemas/conversation";
 import { getDb } from "@/lib/db/client";
 import { conversations as conversationsTable } from "@/lib/db/schema";
@@ -24,6 +24,7 @@ export async function createConversation(conversation: StoredConversation): Prom
       claimedAt: conversation.claimedAt ? new Date(conversation.claimedAt) : null,
       leadId: conversation.leadId,
       data: conversation.state,
+      ipHash: conversation.ipHash,
     });
   } else {
     inMemoryConversations.set(conversation.id, conversation);
@@ -41,7 +42,29 @@ function rowToStored(row: typeof conversationsTable.$inferSelect): StoredConvers
     claimedAt: row.claimedAt ? row.claimedAt.toISOString() : null,
     leadId: row.leadId,
     state: row.data as ConversationState,
+    ipHash: row.ipHash,
   };
+}
+
+/**
+ * How many conversations a given IP hash has started in the last
+ * `sinceMs` -- feeds /api/scripted-chat/start's abuse-protection check.
+ * Counts by `createdAt` (not `updatedAt`), so answering more questions on
+ * an existing conversation never inflates the count.
+ */
+export async function countRecentConversationsByIpHash(ipHash: string, sinceMs: number): Promise<number> {
+  const cutoff = new Date(Date.now() - sinceMs);
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(conversationsTable)
+      .where(and(eq(conversationsTable.ipHash, ipHash), gte(conversationsTable.createdAt, cutoff)));
+    return rows.length;
+  }
+  return [...inMemoryConversations.values()].filter(
+    (c) => c.ipHash === ipHash && new Date(c.createdAt) >= cutoff,
+  ).length;
 }
 
 export async function getConversation(id: string): Promise<StoredConversation | null> {

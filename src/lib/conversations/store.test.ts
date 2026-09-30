@@ -9,6 +9,7 @@ import {
   listNeedsFollowUp,
   listLive,
   listIdleInProgress,
+  countRecentConversationsByIpHash,
   type StoredConversation,
   type ConversationStatus,
 } from "@/lib/conversations/store";
@@ -30,6 +31,7 @@ function makeConversation(status: ConversationStatus): StoredConversation {
     claimedBy: null,
     claimedAt: null,
     leadId: null,
+    ipHash: null,
     state: {
       id,
       createdAt: now,
@@ -126,6 +128,25 @@ describe("listIdleInProgress", () => {
     await createConversation({ ...conversation, updatedAt: staleUpdatedAt });
 
     expect((await listIdleInProgress(20 * 60 * 1000)).some((c) => c.id === conversation.id)).toBe(false);
+  });
+});
+
+describe("countRecentConversationsByIpHash", () => {
+  it("counts conversations from the same hash within the window", async () => {
+    const ipHash = `hash-${crypto.randomUUID()}`;
+    await createConversation({ ...makeConversation("in-progress"), ipHash });
+    await createConversation({ ...makeConversation("completed-unclaimed"), ipHash });
+
+    expect(await countRecentConversationsByIpHash(ipHash, 60 * 60 * 1000)).toBe(2);
+  });
+
+  it("doesn't count conversations from a different hash or outside the window", async () => {
+    const ipHash = `hash-${crypto.randomUUID()}`;
+    const oldConversation = makeConversation("in-progress");
+    await createConversation({ ...oldConversation, ipHash, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() });
+    await createConversation({ ...makeConversation("in-progress"), ipHash: `other-${crypto.randomUUID()}` });
+
+    expect(await countRecentConversationsByIpHash(ipHash, 60 * 60 * 1000)).toBe(0);
   });
 });
 

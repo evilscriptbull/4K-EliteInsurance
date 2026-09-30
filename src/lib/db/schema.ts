@@ -75,6 +75,11 @@ export const conversations = pgTable("conversations", {
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   leadId: uuid("lead_id"),
   data: jsonb("data").notNull(),
+  // Salted SHA-256 of the client IP that started this conversation (see
+  // RATE_LIMIT_SALT, .env.example) -- lets /api/scripted-chat/start rate-limit
+  // by IP without storing the IP itself. Null for conversations created
+  // before this column existed.
+  ipHash: text("ip_hash"),
 });
 
 /**

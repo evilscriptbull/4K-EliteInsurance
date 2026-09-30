@@ -19,6 +19,7 @@ function makeConversation(status: ConversationStatus, claimedBy: string | null =
     claimedBy,
     claimedAt: claimedBy ? now : null,
     leadId: null,
+    ipHash: null,
     state: {
       id,
       createdAt: now,

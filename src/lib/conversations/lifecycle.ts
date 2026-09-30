@@ -21,6 +21,8 @@ export interface StoredConversation {
   claimedAt: string | null;
   leadId: string | null;
   state: ConversationState;
+  /** Salted SHA-256 of the client IP that started this conversation (see RATE_LIMIT_SALT). */
+  ipHash: string | null;
 }
 
 /**
