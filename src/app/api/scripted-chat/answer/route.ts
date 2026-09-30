@@ -3,10 +3,28 @@ import { z } from "zod";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { answerStep, findStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
-import { getConversation, mergeAnswer } from "@/lib/conversations/store";
+import { getConversation, mergeAnswer, markStaffPinged } from "@/lib/conversations/store";
 import { transition } from "@/lib/conversations/lifecycle";
 import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
+import { notifyScriptedChatFirstAnswer } from "@/lib/notifications/leadNotify";
+
+/**
+ * Fires the staff SMS the first time any answer for this conversation is
+ * successfully persisted -- markStaffPinged's atomic guard (store.ts) makes
+ * this safe to call from both the "next" and "complete" branches below
+ * without double-pinging.
+ */
+async function pingStaffOnFirstAnswer(
+  conversationId: string,
+  familySlug: string,
+  answers: Record<string, unknown>,
+): Promise<void> {
+  const pinged = await markStaffPinged(conversationId);
+  if (!pinged) return;
+  const firstName = typeof answers.firstName === "string" ? answers.firstName : undefined;
+  await notifyScriptedChatFirstAnswer({ familySlug, conversationId, firstName });
+}
 
 const answerSchema = z.object({
   conversationId: z.string().min(1),
@@ -91,6 +109,7 @@ export async function POST(request: Request) {
       const current = await getConversation(conversationId);
       return NextResponse.json({ ok: true, status: current?.status ?? conversation.status });
     }
+    await pingStaffOnFirstAnswer(conversationId, conversation.familySlug, result.answers);
     await appendMessage(conversationId, { role: "assistant", content: result.step.prompt });
     return NextResponse.json({ ok: true, status: "next", step: toClientStep(result.step) });
   }
@@ -105,6 +124,7 @@ export async function POST(request: Request) {
       const current = await getConversation(conversationId);
       return NextResponse.json({ ok: true, status: current?.status ?? conversation.status });
     }
+    await pingStaffOnFirstAnswer(conversationId, conversation.familySlug, result.answers);
 
     const closingMessageContent = "Thanks — we've got everything we need. An agent will follow up shortly.";
     await appendMessage(conversationId, { role: "assistant", content: closingMessageContent });

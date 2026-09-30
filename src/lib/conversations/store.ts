@@ -157,6 +157,39 @@ export async function mergeAnswer(
 }
 
 /**
+ * Sets `data.staffPingedAt` the first time it's called for a conversation,
+ * atomically -- the guard for firing the staff SMS exactly once, on
+ * whichever request happens to be the first valid answer (see
+ * notifyScriptedChatFirstAnswer, lib/notifications/leadNotify.ts). Returns
+ * false on every call after the first, including a concurrent/retried
+ * request that raced the winning one.
+ */
+export async function markStaffPinged(id: string): Promise<boolean> {
+  const now = new Date();
+  const db = getDb();
+  if (db) {
+    const result = await db
+      .update(conversationsTable)
+      .set({
+        data: sql`jsonb_set(${conversationsTable.data}, '{staffPingedAt}', ${JSON.stringify(now.toISOString())}::jsonb)`,
+        updatedAt: now,
+      })
+      .where(and(eq(conversationsTable.id, id), sql`(${conversationsTable.data}->>'staffPingedAt') IS NULL`))
+      .returning({ id: conversationsTable.id });
+    return result.length > 0;
+  }
+
+  const existing = inMemoryConversations.get(id);
+  if (!existing || existing.state.staffPingedAt !== undefined) return false;
+  inMemoryConversations.set(id, {
+    ...existing,
+    updatedAt: now.toISOString(),
+    state: { ...existing.state, staffPingedAt: now.toISOString() },
+  });
+  return true;
+}
+
+/**
  * Links a Lead to a conversation, but only if it doesn't already have one --
  * guards finalizeConversation (lib/conversations/finalize.ts) against a
  * concurrent double-finalize creating two Leads for the same conversation.
