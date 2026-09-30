@@ -6,7 +6,6 @@ import {
   releaseConversation,
   completeConversation,
   mergeAnswer,
-  listNeedsFollowUp,
   listLive,
   listIdleInProgress,
   countRecentConversationsByIpHash,
@@ -100,15 +99,14 @@ describe("completeConversation", () => {
   });
 });
 
-describe("listNeedsFollowUp / listLive", () => {
-  it("moves a released conversation into follow-up, out of the live queue", async () => {
+describe("listLive", () => {
+  it("excludes a released conversation", async () => {
     const conversation = makeConversation("in-progress");
     await createConversation(conversation);
     await claimConversation(conversation.id, "associate-a");
     await releaseConversation(conversation.id, "associate-a");
 
-    const [followUp, live] = await Promise.all([listNeedsFollowUp(), listLive()]);
-    expect(followUp.some((c) => c.id === conversation.id)).toBe(true);
+    const live = await listLive();
     expect(live.some((c) => c.id === conversation.id)).toBe(false);
   });
 });

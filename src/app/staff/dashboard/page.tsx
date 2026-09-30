@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 import { getAssociate, listActiveAssociates } from "@/lib/associates/store";
-import { listLive, listNeedsFollowUp, type StoredConversation } from "@/lib/conversations/store";
+import { listLive, type StoredConversation } from "@/lib/conversations/store";
 import { listMessages, type StoredMessage } from "@/lib/conversations/messages";
-import { getLeadById } from "@/lib/leads/store";
+import { listOpenLeadsForFollowUp, type FollowUpLead } from "@/lib/leads/outcomes";
 import { getQuoteFormFamily } from "@/lib/config/quote-forms";
 import { Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
@@ -13,12 +14,24 @@ import { SignOutButton } from "@/components/staff/SignOutButton";
 import { DashboardLiveRefresh } from "@/components/staff/DashboardLiveRefresh";
 import { LiveChatPanel } from "@/components/staff/LiveChatPanel";
 
+const DEFAULT_FOLLOW_UP_LIMIT = 50;
+
 function familyLabel(slug: string): string {
   return getQuoteFormFamily(slug)?.label ?? slug;
 }
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+/** "2026-09-30T12:00:00Z" -> "3h ago" */
+function timeAgo(iso: string): string {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 /** "vehicleYear" -> "Vehicle Year" */
@@ -43,7 +56,7 @@ function CollectedAnswers({ fields }: { fields: Record<string, unknown> }) {
   );
 }
 
-export default async function StaffDashboardPage() {
+export default async function StaffDashboardPage({ searchParams }: { searchParams: Promise<{ limit?: string }> }) {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
     return (
@@ -69,20 +82,17 @@ export default async function StaffDashboardPage() {
     );
   }
 
-  const [live, needsFollowUp, associates] = await Promise.all([
+  const requestedLimit = Number((await searchParams).limit) || DEFAULT_FOLLOW_UP_LIMIT;
+
+  const [live, followUpLeadsPlusOne, associates] = await Promise.all([
     listLive(),
-    listNeedsFollowUp(),
+    listOpenLeadsForFollowUp(requestedLimit),
     listActiveAssociates(),
   ]);
 
   const associateNames = new Map(associates.map((a) => [a.id, a.name]));
-
-  const followUpWithLeads = await Promise.all(
-    needsFollowUp.map(async (conversation) => ({
-      conversation,
-      lead: conversation.leadId ? await getLeadById(conversation.leadId) : null,
-    })),
-  );
+  const hasMoreFollowUp = followUpLeadsPlusOne.length > requestedLimit;
+  const followUpLeads = followUpLeadsPlusOne.slice(0, requestedLimit);
 
   // Only fetched for conversations claimed by the viewer themselves — the
   // live-chat panel needs full transcript context, but nobody else's
@@ -130,18 +140,31 @@ export default async function StaffDashboardPage() {
 
         <section className="mt-10">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-200">
-            Needs Follow-up ({followUpWithLeads.length})
+            Needs Follow-up ({followUpLeads.length}
+            {hasMoreFollowUp ? "+" : ""})
           </h2>
           <div className="mt-4 flex flex-col gap-3">
-            {followUpWithLeads.length === 0 && (
+            {followUpLeads.length === 0 && (
               <Card className="bg-background text-foreground">
                 <p className="text-sm text-brand-700">Nothing waiting on follow-up.</p>
               </Card>
             )}
-            {followUpWithLeads.map(({ conversation, lead }) => (
-              <FollowUpCard key={conversation.id} conversation={conversation} lead={lead} />
+            {followUpLeads.map(({ lead, outcome }) => (
+              <FollowUpCard
+                key={lead.id}
+                lead={lead}
+                assigneeName={outcome.assignedTo ? associateNames.get(outcome.assignedTo) : undefined}
+              />
             ))}
           </div>
+          {hasMoreFollowUp && (
+            <Link
+              href={`?limit=${requestedLimit * 2}`}
+              className="mt-3 inline-block text-sm text-brand-200 underline hover:text-white"
+            >
+              Show more
+            </Link>
+          )}
         </section>
       </div>
     </Section>
@@ -182,24 +205,28 @@ function LiveCard({
   );
 }
 
-function FollowUpCard({ conversation, lead }: { conversation: StoredConversation; lead: Awaited<ReturnType<typeof getLeadById>> }) {
-  const collected = conversation.state.collectedFields as Record<string, unknown>;
-  const name = lead ? `${lead.contact.firstName} ${lead.contact.lastName}` : [collected.firstName, collected.lastName].filter(Boolean).join(" ");
-  const contactInfo = lead?.contact.phone ?? lead?.contact.email ?? (collected.phone as string) ?? (collected.email as string);
+function FollowUpCard({ lead, assigneeName }: { lead: FollowUpLead["lead"]; assigneeName?: string }) {
+  const name = `${lead.contact.firstName} ${lead.contact.lastName}`.trim();
 
   return (
     <Card className="bg-background text-foreground">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-serif text-lg font-semibold text-brand-900">
-            {familyLabel(conversation.familySlug)}
-            {lead && <span className="ml-2 text-xs font-normal uppercase text-accent-600">{lead.leadScoreTier}</span>}
+            {name || "No name collected"}
+            <span className="ml-2 text-xs font-normal uppercase text-accent-600">{lead.leadScoreTier}</span>
           </p>
-          <p className="text-sm text-brand-800">{name || "No contact info collected"}</p>
-          {contactInfo && <p className="text-xs text-brand-600">{contactInfo}</p>}
+          {lead.contact.phone && (
+            <p className="text-xs text-brand-600">
+              <a href={`tel:${lead.contact.phone}`} className="underline">
+                {lead.contact.phone}
+              </a>
+            </p>
+          )}
           <p className="text-xs text-brand-600">
-            {conversation.status === "abandoned" ? "Abandoned" : "Completed, unclaimed"} · {formatTime(conversation.updatedAt)}
+            {lead.line} · {lead.channel} · {lead.completeness === "partial" ? "partial" : "full"} · {timeAgo(lead.createdAt)}
           </p>
+          <p className="text-xs text-brand-600">{assigneeName ? `Assigned to ${assigneeName}` : "Unclaimed"}</p>
         </div>
       </div>
     </Card>

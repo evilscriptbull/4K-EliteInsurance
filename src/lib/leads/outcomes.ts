@@ -1,8 +1,13 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { leadOutcomes as leadOutcomesTable } from "@/lib/db/schema";
+import { leadOutcomes as leadOutcomesTable, leads as leadsTable } from "@/lib/db/schema";
+import { getLeads } from "@/lib/leads/store";
+import type { Lead } from "@/lib/schemas/lead";
 
 export type LeadOutcomeStatus = "new" | "contacted" | "quoted" | "bound" | "lost" | "unreachable";
+
+const OPEN_STATUSES: LeadOutcomeStatus[] = ["new", "contacted", "quoted"];
+const TIER_RANK: Record<string, number> = { immediate: 0, "same-day": 1, nurture: 2, marketing: 3 };
 
 export interface LeadOutcome {
   leadId: string;
@@ -168,4 +173,49 @@ export async function logLeadOutcome(
     boundAt: status === "bound" ? (existing.boundAt ?? now.toISOString()) : existing.boundAt,
   });
   return true;
+}
+
+export interface FollowUpLead {
+  lead: Lead;
+  outcome: LeadOutcome;
+}
+
+/**
+ * The follow-up queue: every open Lead (any channel -- form, chat,
+ * chat-live), joined to its outcome in one query, sorted by score tier then
+ * age (oldest-waiting-first within a tier, so nothing goes stale under a
+ * wave of newer same-tier leads). Fetches `limit + 1` so the caller can
+ * show a "there's more" affordance without a second COUNT query.
+ */
+export async function listOpenLeadsForFollowUp(limit: number): Promise<FollowUpLead[]> {
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select({ leadData: leadsTable.data, outcome: leadOutcomesTable })
+      .from(leadOutcomesTable)
+      .innerJoin(leadsTable, eq(leadOutcomesTable.leadId, leadsTable.id))
+      .where(inArray(leadOutcomesTable.status, OPEN_STATUSES))
+      .orderBy(
+        sql`CASE ${leadsTable.leadScoreTier} WHEN 'immediate' THEN 0 WHEN 'same-day' THEN 1 WHEN 'nurture' THEN 2 WHEN 'marketing' THEN 3 ELSE 4 END`,
+        asc(leadsTable.createdAt),
+      )
+      .limit(limit + 1);
+    return rows.map((row) => ({ lead: row.leadData as Lead, outcome: rowToLeadOutcome(row.outcome) }));
+  }
+
+  // In-memory fallback: getLeads() (lib/leads/store.ts) rather than reaching
+  // into that module's private array -- this and leads/store.ts import each
+  // other, but only inside function bodies (never at module-eval time), so
+  // the cycle is safe (same reasoning docs/architecture.md-adjacent modules
+  // in this codebase already rely on for lazily-called cross-references).
+  const leads = await getLeads();
+  const leadsById = new Map(leads.map((lead) => [lead.id, lead]));
+  return [...inMemoryLeadOutcomes.values()]
+    .filter((outcome) => OPEN_STATUSES.includes(outcome.status) && leadsById.has(outcome.leadId))
+    .map((outcome) => ({ lead: leadsById.get(outcome.leadId)!, outcome }))
+    .sort((a, b) => {
+      const tierDiff = (TIER_RANK[a.lead.leadScoreTier] ?? 4) - (TIER_RANK[b.lead.leadScoreTier] ?? 4);
+      return tierDiff !== 0 ? tierDiff : a.lead.createdAt.localeCompare(b.lead.createdAt);
+    })
+    .slice(0, limit + 1);
 }
