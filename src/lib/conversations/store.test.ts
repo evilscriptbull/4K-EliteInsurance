@@ -8,6 +8,7 @@ import {
   mergeAnswer,
   listNeedsFollowUp,
   listLive,
+  listIdleInProgress,
   type StoredConversation,
   type ConversationStatus,
 } from "@/lib/conversations/store";
@@ -106,6 +107,25 @@ describe("listNeedsFollowUp / listLive", () => {
     const [followUp, live] = await Promise.all([listNeedsFollowUp(), listLive()]);
     expect(followUp.some((c) => c.id === conversation.id)).toBe(true);
     expect(live.some((c) => c.id === conversation.id)).toBe(false);
+  });
+});
+
+describe("listIdleInProgress", () => {
+  it("returns an in-progress conversation only once it's older than the threshold", async () => {
+    const conversation = makeConversation("in-progress");
+    const staleUpdatedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await createConversation({ ...conversation, updatedAt: staleUpdatedAt });
+
+    expect((await listIdleInProgress(20 * 60 * 1000)).some((c) => c.id === conversation.id)).toBe(true);
+    expect((await listIdleInProgress(60 * 60 * 1000)).some((c) => c.id === conversation.id)).toBe(false);
+  });
+
+  it("excludes conversations that aren't in-progress even if they're stale", async () => {
+    const conversation = makeConversation("claimed");
+    const staleUpdatedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await createConversation({ ...conversation, updatedAt: staleUpdatedAt });
+
+    expect((await listIdleInProgress(20 * 60 * 1000)).some((c) => c.id === conversation.id)).toBe(false);
   });
 });
 
