@@ -22,6 +22,7 @@ function makeConversation(overrides: Partial<StoredConversation> & { collectedFi
     claimedBy: null,
     claimedAt: null,
     leadId: null,
+    ipHash: null,
     ...rest,
     state: {
       id,

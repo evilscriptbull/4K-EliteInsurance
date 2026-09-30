@@ -1,10 +1,12 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { getFirstStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
-import { createConversation } from "@/lib/conversations/store";
+import { createConversation, countRecentConversationsByIpHash } from "@/lib/conversations/store";
 import { appendMessage } from "@/lib/conversations/messages";
+import { isHoneypotTripped } from "@/lib/forms/honeypot";
 import type { ConversationState } from "@/lib/schemas/conversation";
 
 const sourceSchema = z.object({
@@ -19,6 +21,16 @@ const startSchema = z.object({
   familySlug: z.string().min(1),
   source: sourceSchema.optional(),
 });
+
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const RATE_LIMIT_MAX_CONVERSATIONS = 10;
+
+/** Null if RATE_LIMIT_SALT isn't configured -- rate limiting then just no-ops (see .env.example). */
+function hashIp(ip: string): string | null {
+  const salt = process.env.RATE_LIMIT_SALT;
+  if (!salt) return null;
+  return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -40,8 +52,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "no-flow-for-family" }, { status: 404 });
   }
 
-  const now = new Date().toISOString();
   const firstStep = getFirstStep(flow);
+
+  if (isHoneypotTripped(body as Record<string, unknown>)) {
+    // A bot filled the invisible field — fake a normal-looking success
+    // without persisting a real conversation, same posture as the 3 static
+    // form routes (lib/forms/honeypot.ts). Any /answer call against this id
+    // will 404, but a scraping bot doesn't check.
+    return NextResponse.json(
+      { ok: true, conversationId: crypto.randomUUID(), intro: flow.intro, step: toClientStep(firstStep) },
+      { status: 201 },
+    );
+  }
+
+  // x-forwarded-for's first entry is the original client, added by the
+  // first proxy it passed through (Vercel's edge network here) — later
+  // entries are proxies further down the chain. Absent entirely for a
+  // direct connection (e.g. local dev), in which case rate limiting simply
+  // doesn't apply to that request rather than blocking it.
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const ipHash = clientIp ? hashIp(clientIp) : null;
+  if (ipHash) {
+    const recentCount = await countRecentConversationsByIpHash(ipHash, RATE_LIMIT_WINDOW_MS);
+    if (recentCount >= RATE_LIMIT_MAX_CONVERSATIONS) {
+      return NextResponse.json({ ok: false, error: "rate-limited" }, { status: 429 });
+    }
+  }
+
+  const now = new Date().toISOString();
   const conversationId = crypto.randomUUID();
 
   // messages: [] — the transcript lives in conversation_messages now, not
@@ -68,6 +106,7 @@ export async function POST(request: Request) {
     claimedBy: null,
     claimedAt: null,
     leadId: null,
+    ipHash,
     state,
   });
 

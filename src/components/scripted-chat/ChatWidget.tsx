@@ -90,7 +90,11 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
       fetch("/api/scripted-chat/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ familySlug, source }),
+        // company_website: honeypot field (lib/forms/honeypot.ts) — always
+        // empty here since this widget renders no visible form for a bot to
+        // autofill; sent for consistency with the 3 static form routes'
+        // convention, not because this specific request is highly exposed.
+        body: JSON.stringify({ familySlug, source, company_website: "" }),
       })
         .then(async (response) => {
           if (!response.ok) {
