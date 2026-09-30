@@ -1,28 +1,15 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { ConversationState } from "@/lib/schemas/conversation";
 import { getDb } from "@/lib/db/client";
 import { conversations as conversationsTable } from "@/lib/db/schema";
+import {
+  inMemoryConversations,
+  transition,
+  type ConversationStatus,
+  type StoredConversation,
+} from "@/lib/conversations/lifecycle";
 
-export type ConversationStatus = "in-progress" | "claimed" | "completed-unclaimed" | "completed-claimed" | "abandoned";
-
-export interface StoredConversation {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  status: ConversationStatus;
-  familySlug: string;
-  claimedBy: string | null;
-  claimedAt: string | null;
-  leadId: string | null;
-  state: ConversationState;
-}
-
-/**
- * Persists to Postgres when DATABASE_URL is configured; otherwise falls
- * back to this in-memory map (not durable), same contract as
- * lib/leads/store.ts.
- */
-const inMemoryConversations = new Map<string, StoredConversation>();
+export type { ConversationStatus, StoredConversation };
 
 export async function createConversation(conversation: StoredConversation): Promise<void> {
   const db = getDb();
@@ -68,8 +55,9 @@ export async function getConversation(id: string): Promise<StoredConversation | 
 
 /**
  * Updates the transcript/collected-answers and (usually) status of a
- * conversation. Used for every scripted-answer turn and for finalization —
- * NOT used for claiming, which has its own atomic path below.
+ * conversation. Used for finalization -- NOT used for claiming/releasing/
+ * completing (lifecycle.ts's transition()) or per-answer merges (mergeAnswer
+ * below), which both have their own atomic paths.
  */
 export async function updateConversation(
   id: string,
@@ -101,106 +89,96 @@ export async function updateConversation(
 }
 
 /**
- * Atomic claim: only succeeds if the conversation is currently unclaimed.
- * Returns false (not an error) if someone else claimed it first — the
- * caller is responsible for telling that associate "already claimed by
- * someone else" rather than silently overwriting. Uses a real
- * UPDATE ... WHERE claimed_by IS NULL, not a read-then-write, so two
- * associates clicking "take over" at the same moment can't both win.
+ * Merges new answer fields into `data.collectedFields` and updates
+ * `currentStepId` in one atomic statement, guarded by status = "in-progress"
+ * -- replaces a whole-blob read-then-write on every answer. Returns false if
+ * the guard didn't hold (the conversation was claimed or ended between the
+ * caller's read and this write); the caller re-fetches and returns the real
+ * current status instead of assuming the merge applied.
+ */
+export async function mergeAnswer(
+  id: string,
+  updates: { currentStepId: string | null; newFields: Record<string, unknown> },
+): Promise<boolean> {
+  const now = new Date();
+  const db = getDb();
+  if (db) {
+    const newFieldsJson = JSON.stringify(updates.newFields);
+    const currentStepIdJson = JSON.stringify(updates.currentStepId);
+    const result = await db
+      .update(conversationsTable)
+      .set({
+        data: sql`jsonb_set(
+          jsonb_set(${conversationsTable.data}, '{collectedFields}', (${conversationsTable.data}->'collectedFields') || ${newFieldsJson}::jsonb),
+          '{currentStepId}', ${currentStepIdJson}::jsonb
+        )`,
+        updatedAt: now,
+      })
+      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.status, "in-progress")))
+      .returning({ id: conversationsTable.id });
+    return result.length > 0;
+  }
+
+  const existing = inMemoryConversations.get(id);
+  if (!existing || existing.status !== "in-progress") return false;
+  inMemoryConversations.set(id, {
+    ...existing,
+    updatedAt: now.toISOString(),
+    state: {
+      ...existing.state,
+      currentStepId: updates.currentStepId ?? undefined,
+      collectedFields: { ...existing.state.collectedFields, ...updates.newFields },
+    },
+  });
+  return true;
+}
+
+/**
+ * Atomic claim: only succeeds if the conversation is currently in-progress.
+ * Returns false (not an error) if it's already claimed or otherwise no
+ * longer live -- the caller is responsible for telling the associate that,
+ * rather than silently overwriting.
  */
 export async function claimConversation(id: string, associateId: string): Promise<boolean> {
-  const now = new Date();
-  const db = getDb();
-  if (db) {
-    const result = await db
-      .update(conversationsTable)
-      .set({ claimedBy: associateId, claimedAt: now, status: "claimed", updatedAt: now })
-      .where(
-        and(
-          eq(conversationsTable.id, id),
-          isNull(conversationsTable.claimedBy),
-          eq(conversationsTable.status, "in-progress"),
-        ),
-      )
-      .returning({ id: conversationsTable.id });
-    return result.length > 0;
-  }
-  const existing = inMemoryConversations.get(id);
-  if (!existing || existing.claimedBy || existing.status !== "in-progress") return false;
-  inMemoryConversations.set(id, {
-    ...existing,
-    claimedBy: associateId,
-    claimedAt: now.toISOString(),
-    status: "claimed",
-    updatedAt: now.toISOString(),
-  });
-  return true;
+  const now = new Date().toISOString();
+  return transition(id, { from: ["in-progress"], to: "claimed", set: { claimedBy: associateId, claimedAt: now } });
 }
 
 /**
- * Undoes a claim — only succeeds if the caller is the one who claimed it.
- * Puts the conversation back in the live queue as unclaimed.
+ * Ends the associate's live takeover -- only succeeds for the associate who
+ * claimed it. Transitions to "released", not back to "in-progress": the
+ * customer's chat already ended (hand-off message sent), so there's nothing
+ * left to resume, and this status heads toward a Lead via
+ * finalizeConversation and Needs Follow-up instead of stranding as a
+ * perpetually-unclaimed Live Queue item. claimedBy/claimedAt are left as-is,
+ * a record of who handled it.
  */
 export async function releaseConversation(id: string, associateId: string): Promise<boolean> {
-  const now = new Date();
-  const db = getDb();
-  if (db) {
-    const result = await db
-      .update(conversationsTable)
-      .set({ claimedBy: null, claimedAt: null, status: "in-progress", updatedAt: now })
-      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.claimedBy, associateId)))
-      .returning({ id: conversationsTable.id });
-    return result.length > 0;
-  }
-  const existing = inMemoryConversations.get(id);
-  if (!existing || existing.claimedBy !== associateId) return false;
-  inMemoryConversations.set(id, {
-    ...existing,
-    claimedBy: null,
-    claimedAt: null,
-    status: "in-progress",
-    updatedAt: now.toISOString(),
-  });
-  return true;
+  return transition(id, { from: ["claimed"], to: "released", claimedBy: associateId });
 }
 
 /**
- * Closes out a claimed conversation the associate handled directly (e.g.
- * by phone) — drops it out of both the live queue and needs-follow-up,
- * same as a resolved inbox item. Only succeeds if the caller is the one
- * who claimed it. No Lead is created here — the associate already has
- * full context from handling it themselves.
+ * Closes out a claimed conversation the associate handled directly (e.g. by
+ * phone) -- only succeeds for the associate who claimed it.
  */
 export async function completeConversation(id: string, associateId: string): Promise<boolean> {
-  const now = new Date();
-  const db = getDb();
-  if (db) {
-    const result = await db
-      .update(conversationsTable)
-      .set({ status: "completed-claimed", updatedAt: now })
-      .where(and(eq(conversationsTable.id, id), eq(conversationsTable.claimedBy, associateId)))
-      .returning({ id: conversationsTable.id });
-    return result.length > 0;
-  }
-  const existing = inMemoryConversations.get(id);
-  if (!existing || existing.claimedBy !== associateId) return false;
-  inMemoryConversations.set(id, { ...existing, status: "completed-claimed", updatedAt: now.toISOString() });
-  return true;
+  return transition(id, { from: ["claimed"], to: "completed-claimed", claimedBy: associateId });
 }
 
-/** Completed-unclaimed and abandoned conversations — the "needs follow-up" dashboard view. */
+/** Conversations heading toward (or needing) a Lead -- the "needs follow-up" dashboard view. */
 export async function listNeedsFollowUp(): Promise<readonly StoredConversation[]> {
+  const statuses: ConversationStatus[] = ["completed-unclaimed", "abandoned", "released"];
   const db = getDb();
   if (db) {
     const rows = await db
       .select()
       .from(conversationsTable)
-      .where(inArray(conversationsTable.status, ["completed-unclaimed", "abandoned"]))
+      .where(inArray(conversationsTable.status, statuses))
       .orderBy(desc(conversationsTable.updatedAt));
     return rows.map(rowToStored);
   }
   return [...inMemoryConversations.values()]
-    .filter((c) => c.status === "completed-unclaimed" || c.status === "abandoned")
+    .filter((c) => (statuses as string[]).includes(c.status))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 

@@ -37,6 +37,7 @@ export const conversationStatusSchema = z.enum([
   "claimed", // an associate has taken over; the script pauses
   "completed-unclaimed", // script finished, no associate ever claimed it
   "completed-claimed", // an associate handled it live to completion
+  "released", // an associate stepped away mid-takeover; customer's chat already ended
   "abandoned", // customer left before the script finished, never claimed
 ]);
 

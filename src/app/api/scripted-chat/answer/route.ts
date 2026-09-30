@@ -4,7 +4,7 @@ import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { answerStep, findStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
 import { scriptedAnswersToLead } from "@/lib/scripted-chat/finalize";
-import { getConversation, updateConversation } from "@/lib/conversations/store";
+import { getConversation, updateConversation, mergeAnswer } from "@/lib/conversations/store";
 import { appendMessage } from "@/lib/conversations/messages";
 import { addLead } from "@/lib/leads/store";
 import { notifyScriptedChatLead } from "@/lib/notifications/leadNotify";
@@ -78,15 +78,17 @@ export async function POST(request: Request) {
   await appendMessage(conversationId, { role: "user", content: String(answer) });
 
   if (result.status === "next") {
+    // Atomic merge, guarded by status = "in-progress" — if this returns
+    // false, the conversation was claimed or ended between our read above
+    // and now. Don't append a phantom next-question message in that case;
+    // just report the real current status and let the widget follow the
+    // control event instead.
+    const merged = await mergeAnswer(conversationId, { currentStepId: result.step.id, newFields: result.answers });
+    if (!merged) {
+      const current = await getConversation(conversationId);
+      return NextResponse.json({ ok: true, status: current?.status ?? conversation.status });
+    }
     await appendMessage(conversationId, { role: "assistant", content: result.step.prompt });
-    await updateConversation(conversationId, {
-      state: {
-        ...conversation.state,
-        updatedAt: now,
-        currentStepId: result.step.id,
-        collectedFields: result.answers,
-      },
-    });
     return NextResponse.json({ ok: true, status: "next", step: toClientStep(result.step) });
   }
 
