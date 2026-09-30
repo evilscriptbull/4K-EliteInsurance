@@ -66,6 +66,11 @@ export const conversationStateSchema = z.object({
   resumeChannel: z.enum(["sms", "email"]).optional(),
   resumeConsent: z.boolean().default(false),
 
+  // Set the first time the staff ping SMS fires for this conversation (see
+  // markStaffPinged, lib/conversations/store.ts) -- guards against a second
+  // answer (or a retried request) re-pinging staff for the same chat.
+  staffPingedAt: z.iso.datetime().optional(),
+
   // Marketing attribution captured at conversation start, mirroring
   // Lead["source"] (lib/schemas/lead.ts) — carried through to the Lead
   // this conversation eventually produces.

@@ -10,6 +10,7 @@ import {
   listLive,
   listIdleInProgress,
   countRecentConversationsByIpHash,
+  markStaffPinged,
   type StoredConversation,
   type ConversationStatus,
 } from "@/lib/conversations/store";
@@ -176,5 +177,24 @@ describe("mergeAnswer", () => {
       newFields: { personalOrCommercial: "personal" },
     });
     expect(merged).toBe(false);
+  });
+});
+
+describe("markStaffPinged", () => {
+  it("succeeds once and sets staffPingedAt", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+
+    expect(await markStaffPinged(conversation.id)).toBe(true);
+    const result = await getConversation(conversation.id);
+    expect(result?.state.staffPingedAt).toBeTypeOf("string");
+  });
+
+  it("fails on every call after the first", async () => {
+    const conversation = makeConversation("in-progress");
+    await createConversation(conversation);
+
+    expect(await markStaffPinged(conversation.id)).toBe(true);
+    expect(await markStaffPinged(conversation.id)).toBe(false);
   });
 });

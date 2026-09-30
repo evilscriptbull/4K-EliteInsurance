@@ -2,6 +2,8 @@ import type { Lead } from "@/lib/schemas/lead";
 import type { StoredContactMessage } from "@/lib/contact/store";
 import type { StoredClaim } from "@/lib/claims/store";
 import { sendSms } from "@/lib/integrations/goto/client";
+import { getQuoteFormFamily } from "@/lib/config/quote-forms";
+import { siteUrl } from "@/lib/config/site";
 
 /**
  * Internal staff SMS notifications via GoTo — not customer-facing copy, so
@@ -45,16 +47,25 @@ export async function notifyNewClaim(claim: StoredClaim): Promise<void> {
 }
 
 /**
- * Fires the moment a Quick Quote Chat starts — before any answers exist,
- * so there's no lead data yet to include. All associates share one notify
- * number for now (see docs/backlog.md), so this is a heads-up, not a claim
- * mechanism; claiming happens in the staff dashboard once it's built.
+ * Fires once per conversation, on the first successfully-processed answer
+ * (see markStaffPinged, lib/conversations/store.ts) -- not on /start, which
+ * used to ping staff before there was anything to act on (see docs/backlog.md
+ * and tasks/todo.md Phase 0's "stop the page-load SMS"). All associates
+ * share one notify number for now, so this is a heads-up, not a claim
+ * mechanism -- claiming happens in the staff dashboard.
  */
-export async function notifyScriptedChatStarted(familySlug: string, conversationId: string): Promise<void> {
+export async function notifyScriptedChatFirstAnswer(params: {
+  familySlug: string;
+  conversationId: string;
+  firstName?: string;
+}): Promise<void> {
   const to = getNotifyNumber();
   if (!to) return;
 
-  const text = `New Quick Quote Chat started (${familySlug}). No details yet — conversation ${conversationId.slice(0, 8)}.`;
+  const familyName = getQuoteFormFamily(params.familySlug)?.label ?? params.familySlug;
+  const who = params.firstName ? ` from ${params.firstName}` : "";
+  const dashboardUrl = `${siteUrl()}/staff/dashboard`;
+  const text = `New Quick Quote Chat in progress${who} (${familyName}) — ${dashboardUrl}`;
   await sendSms(to, text);
 }
 
