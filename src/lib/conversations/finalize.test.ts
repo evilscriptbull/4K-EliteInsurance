@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createConversation, getConversation, type StoredConversation } from "@/lib/conversations/store";
 import { finalizeConversation } from "@/lib/conversations/finalize";
 import { getLeads } from "@/lib/leads/store";
+import { getLeadOutcomesByIds } from "@/lib/leads/outcomes";
 
 // DATABASE_URL is unset in the test environment, so this exercises the
 // in-memory conversation/lead store fallback branches (see store.test.ts's
@@ -106,6 +107,29 @@ describe("finalizeConversation", () => {
 
     const lead = await finalizeConversation(conversation.id, "released");
     expect(lead?.conversationSummary).toContain("Released by an associate");
+  });
+
+  it("assigns the resulting lead's outcome to the claiming associate", async () => {
+    const conversation = makeConversation({
+      collectedFields: { firstName: "Jane", lastName: "Doe", phone: "8651234567" },
+      currentStepId: "vehicleYear",
+      status: "released",
+      claimedBy: "associate-a",
+    });
+    await createConversation(conversation);
+
+    const lead = await finalizeConversation(conversation.id, "released");
+    const [outcome] = await getLeadOutcomesByIds([lead!.id]);
+    expect(outcome.assignedTo).toBe("associate-a");
+  });
+
+  it("leaves the resulting lead's outcome unassigned when nobody claimed the chat", async () => {
+    const conversation = makeConversation({ collectedFields: fullAutoAnswers, currentStepId: null });
+    await createConversation(conversation);
+
+    const lead = await finalizeConversation(conversation.id, "completed-unclaimed");
+    const [outcome] = await getLeadOutcomesByIds([lead!.id]);
+    expect(outcome.assignedTo).toBeNull();
   });
 
   it("returns null and links nothing when there's no name and no way to reach the prospect", async () => {
