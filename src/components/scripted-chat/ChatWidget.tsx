@@ -17,6 +17,40 @@ interface ClientStep {
 type TranscriptEntry = { role: "assistant" | "user" | "associate" | "system"; content: string; authorName?: string };
 type Status = "loading" | "active" | "live" | "complete" | "ended" | "unavailable" | "error";
 
+function storageKey(familySlug: string): string {
+  return `quick-quote-chat:${familySlug}`;
+}
+
+/**
+ * sessionStorage access wrapped in try/catch throughout -- private
+ * browsing, blocked site data, or a locked-down embed can all make it throw
+ * or silently no-op. None of that should ever break the chat itself; it
+ * just means resume-after-refresh won't work for that visitor.
+ */
+function readStoredConversationId(familySlug: string): string | null {
+  try {
+    return window.sessionStorage.getItem(storageKey(familySlug));
+  } catch {
+    return null;
+  }
+}
+
+function storeConversationId(familySlug: string, conversationId: string): void {
+  try {
+    window.sessionStorage.setItem(storageKey(familySlug), conversationId);
+  } catch {
+    // Nothing to resume next time -- not fatal.
+  }
+}
+
+function clearStoredConversationId(familySlug: string): void {
+  try {
+    window.sessionStorage.removeItem(storageKey(familySlug));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Quick Quote Chat — a scripted decision-tree questionnaire, not a real AI
  * conversation (see docs/backlog.md). Every question/branch comes from the
@@ -43,35 +77,80 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
   }, [status]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const source = {
-      utmSource: params.get("utm_source") ?? undefined,
-      utmMedium: params.get("utm_medium") ?? undefined,
-      utmCampaign: params.get("utm_campaign") ?? undefined,
-      gclid: params.get("gclid") ?? undefined,
-      landingPage: window.location.pathname,
-    };
+    function startNewConversation() {
+      const params = new URLSearchParams(window.location.search);
+      const source = {
+        utmSource: params.get("utm_source") ?? undefined,
+        utmMedium: params.get("utm_medium") ?? undefined,
+        utmCampaign: params.get("utm_campaign") ?? undefined,
+        gclid: params.get("gclid") ?? undefined,
+        landingPage: window.location.pathname,
+      };
 
-    fetch("/api/scripted-chat/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ familySlug, source }),
-    })
+      fetch("/api/scripted-chat/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ familySlug, source }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            setStatus("unavailable");
+            return;
+          }
+          const json = await response.json();
+          setConversationId(json.conversationId);
+          storeConversationId(familySlug, json.conversationId);
+          setTranscript([
+            { role: "assistant", content: json.intro },
+            { role: "assistant", content: json.step.prompt },
+          ]);
+          setStep(json.step);
+          setStatus("active");
+        })
+        .catch(() => setStatus("error"));
+    }
+
+    const existingId = readStoredConversationId(familySlug);
+    if (!existingId) {
+      startNewConversation();
+      return;
+    }
+
+    fetch(`/api/scripted-chat/state?conversationId=${encodeURIComponent(existingId)}`)
       .then(async (response) => {
         if (!response.ok) {
-          setStatus("unavailable");
+          // Gone, expired, or from a different environment's storage --
+          // clear the stale id and fall back to starting fresh rather than
+          // getting stuck.
+          clearStoredConversationId(familySlug);
+          startNewConversation();
           return;
         }
         const json = await response.json();
-        setConversationId(json.conversationId);
-        setTranscript([
-          { role: "assistant", content: json.intro },
-          { role: "assistant", content: json.step.prompt },
-        ]);
-        setStep(json.step);
-        setStatus("active");
+        setConversationId(existingId);
+        setTranscript(
+          json.messages.map((message: { role: TranscriptEntry["role"]; content: string }) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        );
+
+        if (json.status === "in-progress") {
+          setStep(json.step);
+          setStatus("active");
+        } else if (json.status === "claimed") {
+          setStatus("live");
+        } else if (json.status === "released" || json.status === "abandoned") {
+          setStatus("ended");
+        } else {
+          // completed-unclaimed / completed-claimed
+          setStatus("complete");
+        }
       })
-      .catch(() => setStatus("error"));
+      .catch(() => {
+        clearStoredConversationId(familySlug);
+        startNewConversation();
+      });
   }, [familySlug]);
 
   useEffect(() => {
@@ -132,7 +211,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
     const response = await fetch("/api/scripted-chat/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, stepId: step.id, answer: rawAnswer }),
+      body: JSON.stringify({ conversationId, stepId: step.id, answer: rawAnswer, answerLabel: label }),
     });
     const json = await response.json();
 
