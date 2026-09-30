@@ -15,6 +15,13 @@ const answerSchema = z.object({
   // JSON.stringify drops `undefined` values entirely, so the key is
   // genuinely absent from the request body, not present as null.
   answer: z.unknown().optional(),
+  // The human-readable label the widget actually showed the customer for
+  // this answer (a select/boolean option's label, or "(skipped)") — used
+  // for the persisted transcript instead of the raw stored value, so a
+  // resumed conversation (GET /state) shows "Full coverage", not "full", and
+  // "(skipped)", not the literal string "undefined". Falls back to
+  // String(answer) if omitted, so older/other callers still work.
+  answerLabel: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -30,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { conversationId, stepId, answer } = parsed.data;
+  const { conversationId, stepId, answer, answerLabel } = parsed.data;
 
   const conversation = await getConversation(conversationId);
   if (!conversation) {
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
   // conversation.state.messages (see src/lib/conversations/messages.ts) —
   // appended as its own row per message, sequentially so ordering by
   // createdAt is reliable, instead of overwriting the whole jsonb blob.
-  await appendMessage(conversationId, { role: "user", content: String(answer) });
+  await appendMessage(conversationId, { role: "user", content: answerLabel ?? String(answer) });
 
   if (result.status === "next") {
     // Atomic merge, guarded by status = "in-progress" — if this returns
