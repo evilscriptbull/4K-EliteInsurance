@@ -50,6 +50,13 @@
       "when": 1790807777368,
       "tag": "0006_cloudy_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790810440717,
+      "tag": "0007_nappy_cable",
+      "breakpoints": true
     }
   ]
 }

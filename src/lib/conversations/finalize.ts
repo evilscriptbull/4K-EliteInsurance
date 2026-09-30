@@ -77,7 +77,10 @@ export async function finalizeConversation(id: string, reason: FinalizeReason): 
     return current?.leadId ? getLeadById(current.leadId) : null;
   }
 
-  await addLead(lead);
+  // Non-null exactly when an associate handled this chat -- satisfies
+  // "leads reached from a claimed chat start as assigned to the claimer"
+  // (tasks/todo.md 3.4).
+  await addLead(lead, { assignedTo: conversation.claimedBy });
 
   const sideEffects: Promise<unknown>[] = [notifyScriptedChatLead(lead), pushLeadToEZLynx(lead)];
   if (reason === "completed-unclaimed") {

@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, text, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, timestamp, text, integer, numeric, jsonb, boolean, index } from "drizzle-orm/pg-core";
 
 /**
  * Durable storage for the 3 form-submission types. Deliberately JSONB +
@@ -17,6 +17,44 @@ export const leads = pgTable("leads", {
   leadScore: integer("lead_score").notNull(),
   leadScoreTier: text("lead_score_tier").notNull(),
   data: jsonb("data").notNull(),
+});
+
+/**
+ * One row per Lead, created the moment the Lead is (see addLead,
+ * lib/leads/store.ts, the single place that happens) — tracks what an
+ * associate has actually done with it, which `leads`/`data` itself has no
+ * concept of. `leadId` is a real FK since `leads` is owned entirely by this
+ * app (same reasoning as conversationMessages.conversationId below);
+ * `assignedTo`/`updatedBy` are plain non-FK uuids referencing associates.id,
+ * matching conversations.claimedBy's established convention (associates.id
+ * mirrors Supabase auth.users.id, not a table this schema itself owns).
+ *
+ * RLS: enabled with a SELECT policy for active associates, reusing
+ * public.is_active_associate() (migrations/0005_active_associate_realtime_policy.sql)
+ * -- a deliberate deviation from a stricter "no policies" default, made
+ * because the follow-up queue's Take/Log outcome/Release actions need to
+ * update a *second* associate's dashboard live, and DashboardLiveRefresh's
+ * only mechanism is a client-side Realtime postgres_changes subscription,
+ * which needs a SELECT policy to receive anything. Safe for the same reason
+ * migration 0004 accepted it for `conversations`: every active associate
+ * can already see every open lead's outcome via the server-rendered
+ * follow-up queue, so this introduces no new exposure -- it only unblocks
+ * the browser's own subscription.
+ */
+export const leadOutcomes = pgTable("lead_outcomes", {
+  leadId: uuid("lead_id")
+    .primaryKey()
+    .references(() => leads.id, { onDelete: "cascade" }),
+  assignedTo: uuid("assigned_to"),
+  status: text("status").notNull().default("new"), // "new" | "contacted" | "quoted" | "bound" | "lost" | "unreachable"
+  writtenPremium: numeric("written_premium", { mode: "number" }),
+  carrier: text("carrier"),
+  notes: text("notes"),
+  updatedBy: uuid("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  contactedAt: timestamp("contacted_at", { withTimezone: true }),
+  quotedAt: timestamp("quoted_at", { withTimezone: true }),
+  boundAt: timestamp("bound_at", { withTimezone: true }),
 });
 
 export const claims = pgTable("claims", {

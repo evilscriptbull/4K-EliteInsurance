@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import type { Lead } from "@/lib/schemas/lead";
 import { getDb } from "@/lib/db/client";
 import { leads as leadsTable } from "@/lib/db/schema";
+import { createLeadOutcome } from "@/lib/leads/outcomes";
 
 /**
  * Persists to Postgres when DATABASE_URL is configured; otherwise falls
@@ -10,7 +11,14 @@ import { leads as leadsTable } from "@/lib/db/schema";
  */
 const inMemoryLeads: Lead[] = [];
 
-export async function addLead(lead: Lead): Promise<void> {
+/**
+ * The only place a Lead is ever stored -- also the only place its
+ * lead_outcomes row gets created (see createLeadOutcome), so neither of the
+ * two call sites (the quote route, finalizeConversation) can forget it.
+ * `assignedTo` is non-null exactly when the lead came from a chat an
+ * associate had already claimed.
+ */
+export async function addLead(lead: Lead, options?: { assignedTo?: string | null }): Promise<void> {
   console.log(`[lead] ${lead.id} — ${lead.line} — ${lead.contact.firstName} ${lead.contact.lastName}`);
 
   const db = getDb();
@@ -26,6 +34,8 @@ export async function addLead(lead: Lead): Promise<void> {
   } else {
     inMemoryLeads.push(lead);
   }
+
+  await createLeadOutcome(lead.id, options?.assignedTo ?? null);
 }
 
 export async function getLeads(): Promise<readonly Lead[]> {
