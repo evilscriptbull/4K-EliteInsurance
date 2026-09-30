@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { releaseConversation } from "@/lib/conversations/store";
+import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
 import { broadcastToConversation } from "@/lib/conversations/broadcast";
 
@@ -31,8 +32,9 @@ export async function POST(request: Request) {
   if (released) {
     // Confirmed decision: releasing does not resume the scripted
     // questionnaire — the customer's live chat simply ends here. The
-    // conversation itself goes back to the queue unclaimed for a
-    // different associate to claim fresh if they choose to.
+    // conversation heads to Needs Follow-up (status "released", see
+    // lib/conversations/store.ts) rather than back to the Live Queue —
+    // there's nothing left to resume, so a fresh claim wouldn't do anything.
     const message = await appendMessage(conversationId, {
       role: "system",
       content: "This associate has stepped away — we'll follow up with you shortly.",
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
       name: "control",
       payload: { type: "handoff", reason: "released" },
     });
+    await finalizeConversation(conversationId, "released");
   }
 
   return NextResponse.json({ ok: true, released });

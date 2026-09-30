@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { completeConversation } from "@/lib/conversations/store";
+import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
 import { broadcastToConversation } from "@/lib/conversations/broadcast";
 
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
       name: "control",
       payload: { type: "handoff", reason: "completed" },
     });
+    await finalizeConversation(conversationId, "completed-claimed");
   }
 
   return NextResponse.json({ ok: true, completed });
