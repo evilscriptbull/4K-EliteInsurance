@@ -3,13 +3,10 @@ import { z } from "zod";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { answerStep, findStep } from "@/lib/scripted-chat/engine";
 import { toClientStep } from "@/lib/scripted-chat/serialize";
-import { scriptedAnswersToLead } from "@/lib/scripted-chat/finalize";
-import { getConversation, updateConversation, mergeAnswer } from "@/lib/conversations/store";
+import { getConversation, mergeAnswer } from "@/lib/conversations/store";
+import { transition } from "@/lib/conversations/lifecycle";
+import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
-import { addLead } from "@/lib/leads/store";
-import { notifyScriptedChatLead } from "@/lib/notifications/leadNotify";
-import { sendQuoteConfirmationEmail } from "@/lib/notifications/emailNotify";
-import { pushLeadToEZLynx } from "@/lib/integrations/ezlynx/adapter";
 
 const answerSchema = z.object({
   conversationId: z.string().min(1),
@@ -65,7 +62,6 @@ export async function POST(request: Request) {
   }
 
   const result = answerStep(flow, stepId, answer, conversation.state.collectedFields);
-  const now = new Date().toISOString();
 
   if (result.status === "invalid") {
     return NextResponse.json({ ok: true, status: "invalid", step: toClientStep(result.step), errors: result.errors });
@@ -94,31 +90,31 @@ export async function POST(request: Request) {
 
   // result.status === "complete"
   try {
-    const lead = scriptedAnswersToLead(conversation.familySlug, result.answers, conversation.state.source ?? {});
-    await addLead(lead);
+    // Same guard as the "next" branch: persist the final answer atomically
+    // before transitioning, and bail out to the real current status if a
+    // claim raced us between the earlier read and now.
+    const merged = await mergeAnswer(conversationId, { currentStepId: null, newFields: result.answers });
+    if (!merged) {
+      const current = await getConversation(conversationId);
+      return NextResponse.json({ ok: true, status: current?.status ?? conversation.status });
+    }
 
     const closingMessageContent = "Thanks — we've got everything we need. An agent will follow up shortly.";
     await appendMessage(conversationId, { role: "assistant", content: closingMessageContent });
 
-    await updateConversation(conversationId, {
-      state: {
-        ...conversation.state,
-        updatedAt: now,
-        status: "completed-unclaimed",
-        collectedFields: result.answers,
-        leadId: lead.id,
-      },
-      status: "completed-unclaimed",
-      leadId: lead.id,
-    });
+    const transitioned = await transition(conversationId, { from: ["in-progress"], to: "completed-unclaimed" });
+    if (!transitioned) {
+      const current = await getConversation(conversationId);
+      return NextResponse.json({ ok: true, status: current?.status ?? "in-progress" });
+    }
 
-    await Promise.all([notifyScriptedChatLead(lead), sendQuoteConfirmationEmail(lead), pushLeadToEZLynx(lead)]);
+    const lead = await finalizeConversation(conversationId, "completed-unclaimed");
 
     return NextResponse.json({
       ok: true,
       status: "complete",
-      leadId: lead.id,
-      leadScoreTier: lead.leadScoreTier,
+      leadId: lead?.id,
+      leadScoreTier: lead?.leadScoreTier,
       closingMessage: closingMessageContent,
     });
   } catch (error) {

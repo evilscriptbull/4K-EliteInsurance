@@ -119,12 +119,19 @@ function buildInsuredAssets(input: QuoteFormInput): Lead["insuredAssets"] {
  * accurate description of the actual conversation — reusing this mapper
  * unchanged instead of duplicating it, so both paths stay in sync.
  */
-export function quoteFormToLead(input: QuoteFormInput, source: LeadSource = {}, conversationSummary?: string): Lead {
+export function quoteFormToLead(
+  input: QuoteFormInput,
+  source: LeadSource = {},
+  conversationSummary?: string,
+  channel: Lead["channel"] = "form",
+): Lead {
   const line = resolveLine(input);
 
   const draft: Omit<Lead, "leadScore" | "leadScoreTier"> = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    channel,
+    completeness: "full",
     line,
     intent: buildIntent(input),
     contact: {

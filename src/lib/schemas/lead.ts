@@ -36,6 +36,9 @@ export const leadSchema = z.object({
   id: z.string(),
   createdAt: z.iso.datetime(),
 
+  channel: z.enum(["form", "chat", "chat-live"]).default("form"),
+  completeness: z.enum(["full", "partial"]).default("full"),
+
   line: z.enum(insuranceLines),
   intent: z.string(), // free-text summary of what the prospect is trying to accomplish
 

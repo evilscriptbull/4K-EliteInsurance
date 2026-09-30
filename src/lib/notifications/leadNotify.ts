@@ -59,10 +59,14 @@ export async function notifyScriptedChatStarted(familySlug: string, conversation
 }
 
 /**
- * Fires when a Quick Quote Chat finishes with nobody having claimed it —
- * this text is currently the *only* place an associate learns what the
- * customer actually said (no staff dashboard yet), so it's deliberately
- * more detailed than notifyNewLead's one-liner above.
+ * Fires whenever a Quick Quote Chat conversation finalizes into a Lead —
+ * completed alone, chatted live then completed/released, or abandoned. This
+ * text is currently the *only* place an associate learns what the customer
+ * actually said (no dashboard lead detail view yet), so it's deliberately
+ * more detailed than notifyNewLead's one-liner above. `lead.conversationSummary`
+ * (set per-path by finalizeConversation, lib/conversations/finalize.ts)
+ * carries the completed/claimed/released/abandoned framing and who handled
+ * it, so this doesn't need to know the reason itself.
  */
 export async function notifyScriptedChatLead(lead: Lead): Promise<void> {
   const to = getNotifyNumber();
@@ -70,11 +74,13 @@ export async function notifyScriptedChatLead(lead: Lead): Promise<void> {
 
   const contactInfo = lead.contact.phone ?? lead.contact.email ?? "no contact info";
   const asset = lead.insuredAssets[0]?.description ?? lead.insuredAssets[0]?.kind;
+  const completenessNote = lead.completeness === "partial" ? " (partial)" : "";
   const lines = [
-    `Quick Quote Chat completed, unclaimed (${lead.leadScoreTier}) — ${lead.line}`,
+    `Quick Quote Chat lead${completenessNote} (${lead.leadScoreTier}) — ${lead.line}`,
     `${lead.contact.firstName} ${lead.contact.lastName} — ${contactInfo}`,
     asset ? `Asset: ${asset}` : null,
     lead.intent,
+    lead.conversationSummary,
   ].filter((line): line is string => Boolean(line));
 
   await sendSms(to, lines.join("\n"));

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { ConversationState } from "@/lib/schemas/conversation";
 import { getDb } from "@/lib/db/client";
 import { conversations as conversationsTable } from "@/lib/db/schema";
@@ -130,6 +130,29 @@ export async function mergeAnswer(
       collectedFields: { ...existing.state.collectedFields, ...updates.newFields },
     },
   });
+  return true;
+}
+
+/**
+ * Links a Lead to a conversation, but only if it doesn't already have one --
+ * guards finalizeConversation (lib/conversations/finalize.ts) against a
+ * concurrent double-finalize creating two Leads for the same conversation.
+ * Returns false if a leadId was already set.
+ */
+export async function setLeadIdIfMissing(id: string, leadId: string): Promise<boolean> {
+  const now = new Date();
+  const db = getDb();
+  if (db) {
+    const result = await db
+      .update(conversationsTable)
+      .set({ leadId, updatedAt: now })
+      .where(and(eq(conversationsTable.id, id), isNull(conversationsTable.leadId)))
+      .returning({ id: conversationsTable.id });
+    return result.length > 0;
+  }
+  const existing = inMemoryConversations.get(id);
+  if (!existing || existing.leadId) return false;
+  inMemoryConversations.set(id, { ...existing, leadId, updatedAt: now.toISOString() });
   return true;
 }
 
