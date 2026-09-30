@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { ConversationState } from "@/lib/schemas/conversation";
 import { getDb } from "@/lib/db/client";
 import { conversations as conversationsTable } from "@/lib/db/schema";
@@ -203,6 +203,28 @@ export async function listNeedsFollowUp(): Promise<readonly StoredConversation[]
   return [...inMemoryConversations.values()]
     .filter((c) => (statuses as string[]).includes(c.status))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/**
+ * In-progress conversations that have gone quiet -- nobody claimed them and
+ * the customer hasn't answered in a while. Feeds the abandon sweeper
+ * (src/app/api/cron/sweep-conversations/route.ts); "idle" is measured by
+ * updatedAt, which mergeAnswer bumps on every answer, so a conversation the
+ * customer is actively working through never qualifies.
+ */
+export async function listIdleInProgress(olderThanMs: number): Promise<readonly StoredConversation[]> {
+  const cutoff = new Date(Date.now() - olderThanMs);
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(conversationsTable)
+      .where(and(eq(conversationsTable.status, "in-progress"), lt(conversationsTable.updatedAt, cutoff)));
+    return rows.map(rowToStored);
+  }
+  return [...inMemoryConversations.values()].filter(
+    (c) => c.status === "in-progress" && new Date(c.updatedAt) < cutoff,
+  );
 }
 
 /** In-progress and claimed conversations — the live-queue dashboard view. */
