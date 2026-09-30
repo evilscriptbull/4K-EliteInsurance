@@ -14,7 +14,20 @@ interface ClientStep {
   optional?: boolean;
 }
 
-type TranscriptEntry = { role: "assistant" | "user" | "associate" | "system"; content: string; authorName?: string };
+/**
+ * `id` is only ever set for entries that came from a persisted message
+ * (broadcast live chat, or a resync via /state) -- the scripted phase's
+ * prompts/answers are added optimistically from the /start and /answer
+ * responses, which don't round-trip a message id. That's fine: only
+ * id-bearing entries need dedup/resync, since only the live-chat path can
+ * ever receive the same message twice or miss one while disconnected.
+ */
+type TranscriptEntry = {
+  id?: string;
+  role: "assistant" | "user" | "associate" | "system";
+  content: string;
+  authorName?: string;
+};
 type Status = "loading" | "active" | "live" | "complete" | "ended" | "unavailable" | "error";
 
 function storageKey(familySlug: string): string {
@@ -133,7 +146,8 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
         const json = await response.json();
         setConversationId(existingId);
         setTranscript(
-          json.messages.map((message: { role: TranscriptEntry["role"]; content: string }) => ({
+          json.messages.map((message: { id: string; role: TranscriptEntry["role"]; content: string }) => ({
+            id: message.id,
             role: message.role,
             content: message.content,
           })),
@@ -166,13 +180,41 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    // Re-fetches the full persisted transcript and replaces local state with
+    // it, preserving any authorName already known for a given message id --
+    // closes the gap where a broadcast missed while this tab was
+    // disconnected (backgrounded, network drop) would otherwise be gone for
+    // good. Only meaningful in live mode: the scripted phase's messages
+    // never travel over this channel at all (each one comes back directly
+    // in the /start or /answer response), so there's nothing for them to
+    // miss.
+    async function resyncFromHistory() {
+      try {
+        const response = await fetch(`/api/scripted-chat/state?conversationId=${encodeURIComponent(conversationId!)}`);
+        if (!response.ok) return;
+        const json = await response.json();
+        setTranscript((prev) => {
+          const authorNameById = new Map(prev.filter((entry) => entry.id).map((entry) => [entry.id, entry.authorName]));
+          return json.messages.map((message: { id: string; role: TranscriptEntry["role"]; content: string }) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            authorName: authorNameById.get(message.id),
+          }));
+        });
+      } catch {
+        // Best-effort -- local state (and the next live broadcast) still works.
+      }
+    }
+
     const channel = supabase
       .channel(`conversation:${conversationId}`)
       .on("broadcast", { event: "message" }, ({ payload }) => {
-        setTranscript((prev) => [
-          ...prev,
-          { role: payload.role, content: payload.content, authorName: payload.authorName },
-        ]);
+        setTranscript((prev) =>
+          prev.some((entry) => entry.id === payload.id)
+            ? prev
+            : [...prev, { id: payload.id, role: payload.role, content: payload.content, authorName: payload.authorName }],
+        );
       })
       .on("broadcast", { event: "control" }, ({ payload }) => {
         if (payload.type === "takeover" && statusRef.current === "active") {
@@ -182,7 +224,11 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
           setStatus(payload.reason === "released" ? "ended" : "complete");
         }
       })
-      .subscribe();
+      .subscribe((subscribeStatus) => {
+        if (subscribeStatus === "SUBSCRIBED" && statusRef.current === "live") {
+          resyncFromHistory();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -296,7 +342,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
       <div ref={transcriptRef} className="flex max-h-96 flex-col gap-3 overflow-y-auto">
         {transcript.map((entry, index) => (
           <div
-            key={index}
+            key={entry.id ?? index}
             className={
               entry.role === "user"
                 ? "self-end rounded-2xl bg-brand-800 px-4 py-2 text-sm text-white"

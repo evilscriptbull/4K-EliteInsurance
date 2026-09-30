@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { Button } from "@/components/ui/Button";
 import type { StoredMessage } from "@/lib/conversations/messages";
 
-type LiveEntry = Pick<StoredMessage, "role" | "content"> & { authorName?: string };
+type LiveEntry = Pick<StoredMessage, "id" | "role" | "content"> & { authorName?: string };
 
 /**
  * Shown on a conversation the current associate has claimed — the actual
@@ -26,12 +26,47 @@ export function LiveChatPanel({ conversationId, initialMessages }: { conversatio
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    // Re-fetches the persisted transcript and replaces local state with it
+    // (preserving any authorName already known per message id) -- closes
+    // the gap where a broadcast missed during a Realtime reconnect would
+    // otherwise be gone for good. Needs the associate's own bearer token,
+    // same as handleSubmit below.
+    async function resyncFromHistory() {
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+      try {
+        const response = await fetch(`/api/staff/messages?conversationId=${encodeURIComponent(conversationId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const json = await response.json();
+        setMessages((prev) => {
+          const authorNameById = new Map(prev.map((m) => [m.id, m.authorName]));
+          return json.messages.map((message: StoredMessage) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            authorName: authorNameById.get(message.id),
+          }));
+        });
+      } catch {
+        // Best-effort -- local state (and the next live broadcast) still works.
+      }
+    }
+
     const channel = supabase
       .channel(`conversation:${conversationId}`)
       .on("broadcast", { event: "message" }, ({ payload }) => {
-        setMessages((prev) => [...prev, { role: payload.role, content: payload.content, authorName: payload.authorName }]);
+        setMessages((prev) =>
+          prev.some((m) => m.id === payload.id)
+            ? prev
+            : [...prev, { id: payload.id, role: payload.role, content: payload.content, authorName: payload.authorName }],
+        );
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") resyncFromHistory();
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -69,7 +104,7 @@ export function LiveChatPanel({ conversationId, initialMessages }: { conversatio
       <div ref={listRef} className="flex max-h-48 flex-col gap-2 overflow-y-auto text-sm">
         {messages.map((message, index) => (
           <div
-            key={index}
+            key={message.id ?? index}
             className={
               message.role === "user"
                 ? "self-start rounded-2xl bg-surface px-3 py-1.5 text-foreground"
