@@ -57,6 +57,37 @@ export const leadOutcomes = pgTable("lead_outcomes", {
   boundAt: timestamp("bound_at", { withTimezone: true }),
 });
 
+/**
+ * One row per generated Agent Brief (see src/lib/ai/agentBrief/generate.ts)
+ * -- an internal, staff-only pre-call brief, never shown to the customer.
+ * `leadId` is a real FK, same reasoning as `leadOutcomes.leadId` above
+ * (`leads` is owned entirely by this app). `conversationId` stays a plain
+ * nullable uuid, no FK -- the static quote-form path has no conversation
+ * at all. `data` holds the full zod-validated `AgentBrief`
+ * (src/lib/schemas/agentBrief.ts).
+ *
+ * RLS: enabled with NO policies -- unlike `leadOutcomes`, nothing here
+ * ever needs a client-side Realtime subscription (the dashboard reads
+ * briefs via a normal server-rendered fetch, not a live update), so this
+ * matches `conversationMessages`' stricter default-deny precedent instead.
+ */
+export const agentBriefs = pgTable(
+  "agent_briefs",
+  {
+    id: uuid("id").primaryKey(),
+    leadId: uuid("lead_id")
+      .notNull()
+      .references(() => leads.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    origin: text("origin").notNull(), // "model" | "fallback"
+    model: text("model"),
+    promptVersion: text("prompt_version").notNull(),
+    data: jsonb("data").notNull(),
+  },
+  (table) => [index("agent_briefs_lead_id_idx").on(table.leadId)],
+);
+
 export const claims = pgTable("claims", {
   id: uuid("id").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
