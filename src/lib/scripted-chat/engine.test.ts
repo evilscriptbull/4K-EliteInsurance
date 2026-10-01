@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import { answerStep, getFirstStep } from "@/lib/scripted-chat/engine";
 import { autoFlow } from "@/lib/scripted-chat/flows/auto";
 import { businessFlow } from "@/lib/scripted-chat/flows/business";
+import { collectorVehicleFlow } from "@/lib/scripted-chat/flows/collector-vehicle";
+import { homeFlow } from "@/lib/scripted-chat/flows/home";
+import { recreationalFlow } from "@/lib/scripted-chat/flows/recreational";
+import { lifeFlow } from "@/lib/scripted-chat/flows/life";
 import { scriptedFlows } from "@/lib/scripted-chat/flows";
 
 function walkFlow(flow: typeof autoFlow, answersInOrder: Array<{ stepId: string; answer: unknown }>) {
@@ -204,6 +208,143 @@ describe("businessFlow", () => {
       hasActivePolicy: false,
     });
     expect(answers.currentCarrier).toBeUndefined();
+  });
+});
+
+describe("collectorVehicleFlow", () => {
+  it("walks the full flow to completion", () => {
+    const { answers, lastStatus } = walkFlow(collectorVehicleFlow, [
+      { stepId: "fullName", answer: "Chris Collector" },
+      { stepId: "phone", answer: "8655550030" },
+      { stepId: "smsConsent", answer: true },
+      { stepId: "email", answer: "chris@example.com" },
+      { stepId: "vehicleYear", answer: "1969" },
+      { stepId: "vehicleMake", answer: "Chevrolet" },
+      { stepId: "vehicleModel", answer: "Camaro" },
+      { stepId: "estimatedValue", answer: "45000" },
+      { stepId: "mileagePlan", answer: "3000" },
+      { stepId: "liabilityLimits", answer: "300000" },
+      { stepId: "currentCarrier", answer: "State Farm" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "dateOfBirth", answer: undefined },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      firstName: "Chris",
+      lastName: "Collector",
+      vehicleYear: "1969",
+      vehicleMake: "Chevrolet",
+      vehicleModel: "Camaro",
+      estimatedValue: 45000,
+      mileagePlan: "3000",
+      liabilityLimits: "300000",
+      currentCarrier: "State Farm",
+      hasActivePolicy: true,
+    });
+    expect(answers).not.toHaveProperty("dateOfBirth");
+    expect(answers).not.toHaveProperty("renewalDate");
+  });
+});
+
+describe("homeFlow", () => {
+  it("walks the full flow to completion, skipping the now-optional dateOfBirth", () => {
+    const { answers, lastStatus } = walkFlow(homeFlow, [
+      { stepId: "fullName", answer: "Holly Owner" },
+      { stepId: "phone", answer: "8655550040" },
+      { stepId: "smsConsent", answer: false },
+      { stepId: "email", answer: "holly@example.com" },
+      { stepId: "dwellingCoverageAmount", answer: "350000" },
+      { stepId: "liabilityLimit", answer: "300000" },
+      { stepId: "deductible", answer: "1000" },
+      { stepId: "currentCarrier", answer: "not-insured" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "dateOfBirth", answer: undefined },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      firstName: "Holly",
+      lastName: "Owner",
+      dwellingCoverageAmount: 350000,
+      liabilityLimit: "300000",
+      deductible: "1000",
+      hasActivePolicy: false,
+    });
+    expect(answers.currentCarrier).toBeUndefined();
+    expect(answers).not.toHaveProperty("dateOfBirth");
+  });
+});
+
+describe("recreationalFlow", () => {
+  it("walks the full flow to completion", () => {
+    const { answers, lastStatus } = walkFlow(recreationalFlow, [
+      { stepId: "vehicleType", answer: "boat" },
+      { stepId: "fullName", answer: "Rhonda Rec" },
+      { stepId: "phone", answer: "8655550050" },
+      { stepId: "smsConsent", answer: true },
+      { stepId: "email", answer: "rhonda@example.com" },
+      { stepId: "vehicleYear", answer: "2015" },
+      { stepId: "vehicleMake", answer: "Bayliner" },
+      { stepId: "vehicleModel", answer: "175" },
+      { stepId: "coverageType", answer: "full" },
+      { stepId: "liabilityLimits", answer: "100-300" },
+      { stepId: "currentCarrier", answer: "Progressive" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "dateOfBirth", answer: "1985-05-05" },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      vehicleType: "boat",
+      firstName: "Rhonda",
+      lastName: "Rec",
+      vehicleYear: "2015",
+      vehicleMake: "Bayliner",
+      vehicleModel: "175",
+      coverageType: "full",
+      liabilityLimits: "100-300",
+      currentCarrier: "Progressive",
+      hasActivePolicy: true,
+      dateOfBirth: "1985-05-05",
+    });
+  });
+});
+
+describe("lifeFlow", () => {
+  it("walks the full flow to completion with its own carrier list", () => {
+    const { answers, lastStatus } = walkFlow(lifeFlow, [
+      { stepId: "fullName", answer: "Len Life" },
+      { stepId: "phone", answer: "8655550060" },
+      { stepId: "smsConsent", answer: false },
+      { stepId: "email", answer: "len@example.com" },
+      { stepId: "amountRequested", answer: "250000" },
+      { stepId: "product", answer: "term" },
+      { stepId: "height", answer: "5'10\"" },
+      { stepId: "weight", answer: "180" },
+      { stepId: "tobaccoUser", answer: false },
+      { stepId: "currentCarrier", answer: "Northwestern Mutual" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "medicationsSurgeries", answer: undefined },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      firstName: "Len",
+      lastName: "Life",
+      amountRequested: 250000,
+      product: "term",
+      height: "5'10\"",
+      weight: "180",
+      tobaccoUser: false,
+      currentCarrier: "Northwestern Mutual",
+      hasActivePolicy: true,
+    });
+    expect(answers).not.toHaveProperty("dateOfBirth");
   });
 });
 

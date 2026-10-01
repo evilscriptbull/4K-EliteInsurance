@@ -24,7 +24,7 @@ export function RecreationalQuoteForm() {
       family: "recreational",
       ...parseQuoteContactFields(formData),
       vehicleType: formData.get("vehicleType"),
-      dateOfBirth: formData.get("dateOfBirth"),
+      dateOfBirth: formData.get("dateOfBirth") || undefined,
       vehicleYear: formData.get("vehicleYear"),
       vehicleMake: formData.get("vehicleMake"),
       vehicleModel: formData.get("vehicleModel"),
@@ -55,7 +55,7 @@ export function RecreationalQuoteForm() {
         error={fieldErrors.vehicleType?.[0]}
       />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="dateOfBirth" label="Date of Birth" type="date" required error={fieldErrors.dateOfBirth?.[0]} />
+        <TextField name="dateOfBirth" label="Date of Birth" type="date" error={fieldErrors.dateOfBirth?.[0]} />
       </div>
       <div className="grid gap-5 sm:grid-cols-3">
         <TextField name="vehicleYear" label="Vehicle Year" required error={fieldErrors.vehicleYear?.[0]} />
