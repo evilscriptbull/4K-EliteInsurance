@@ -44,6 +44,12 @@ const quoteContactBase = z.object({
   state: stateField.default("TN"),
   smsConsent: z.boolean().default(false),
   notes: z.string().optional(),
+  // Added for Phase 5.1 (tasks/todo.md) -- shared across all 6 families so
+  // 5.2/5.3 can ask the same questions later, though today only the auto
+  // chat flow actually asks them. Feed lead.renewalUrgency.
+  currentCarrier: z.string().optional(),
+  renewalDate: z.iso.date().optional(),
+  hasActivePolicy: z.boolean().optional(),
 });
 
 export const collectorVehicleQuoteSchema = quoteContactBase.extend({
@@ -60,7 +66,7 @@ export const collectorVehicleQuoteSchema = quoteContactBase.extend({
 export const autoQuoteSchema = quoteContactBase.extend({
   family: z.literal("auto"),
   personalOrCommercial: z.enum(["personal", "commercial"]),
-  dateOfBirth: z.iso.date(),
+  dateOfBirth: z.iso.date().optional(),
   licenseNumber: z.string().optional(),
   vehicleYear: z.string().min(4),
   vehicleMake: z.string().min(1),

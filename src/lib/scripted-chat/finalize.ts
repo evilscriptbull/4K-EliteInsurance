@@ -127,6 +127,9 @@ export function conversationToPartialLead(
   const lastName = typeof answers.lastName === "string" ? answers.lastName : "";
   const phone = typeof answers.phone === "string" ? answers.phone : undefined;
   const email = typeof answers.email === "string" ? answers.email : undefined;
+  const currentCarrier = typeof answers.currentCarrier === "string" ? answers.currentCarrier : undefined;
+  const renewalDate = typeof answers.renewalDate === "string" ? answers.renewalDate : undefined;
+  const hasActivePolicy = typeof answers.hasActivePolicy === "boolean" ? answers.hasActivePolicy : undefined;
 
   const hasName = Boolean(firstName || lastName);
   if (!hasName && !phone && !email) return null;
@@ -154,7 +157,7 @@ export function conversationToPartialLead(
       smsConsent: answers.smsConsent === true,
     },
     insuredAssets: [],
-    renewalUrgency: {},
+    renewalUrgency: { currentCarrier, renewalDate, hasActivePolicy },
     crossSellPotential: [],
     conversationSummary: `Started the Quick Quote Chat (${familySlug}) but didn't finish — an agent will need to fill in the gaps directly.`,
     missingFields,

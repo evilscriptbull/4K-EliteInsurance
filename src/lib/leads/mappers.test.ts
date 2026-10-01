@@ -44,6 +44,29 @@ describe("quoteFormToLead", () => {
     expect(lead.line).toBe("auto");
   });
 
+  it("maps currentCarrier/renewalDate/hasActivePolicy into renewalUrgency (Phase 5.1)", () => {
+    const input: QuoteFormInput = {
+      ...baseContact,
+      family: "auto",
+      personalOrCommercial: "personal",
+      dateOfBirth: "1990-01-01",
+      vehicleYear: "2021",
+      vehicleMake: "Honda",
+      vehicleModel: "Civic",
+      liabilityLimits: "100-300-100",
+      coverageType: "full",
+      currentCarrier: "State Farm",
+      renewalDate: "2026-11-15",
+      hasActivePolicy: true,
+    };
+    const lead = quoteFormToLead(input);
+    expect(lead.renewalUrgency).toMatchObject({
+      currentCarrier: "State Farm",
+      renewalDate: "2026-11-15",
+      hasActivePolicy: true,
+    });
+  });
+
   it("maps a commercial auto quote to the commercial-auto line", () => {
     const input: QuoteFormInput = {
       ...baseContact,

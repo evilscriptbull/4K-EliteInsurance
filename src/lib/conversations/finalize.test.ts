@@ -101,7 +101,8 @@ describe("finalizeConversation", () => {
 
     const lead = await finalizeConversation(conversation.id, "abandoned");
     expect(lead?.completeness).toBe("partial");
-    expect(lead?.conversationSummary).toContain("2 of");
+    // Phase 5.1 reordered the auto flow; "vehicleMake" is now index 6.
+    expect(lead?.conversationSummary).toContain("6 of");
     expect(lead?.missingFields).toContain("vehicleMake");
   });
 

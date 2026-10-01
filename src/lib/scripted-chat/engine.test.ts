@@ -22,7 +22,7 @@ describe("answerStep", () => {
     const result = answerStep(autoFlow, "licenseNumber", undefined, {});
     expect(result.status).toBe("next");
     if (result.status === "next") {
-      expect(result.step.id).toBe("fullName");
+      expect(result.step.id).toBe("notes");
       expect(result.answers).not.toHaveProperty("licenseNumber");
     }
   });
@@ -36,20 +36,39 @@ describe("answerStep", () => {
     }
   });
 
+  it("derives hasActivePolicy: true and keeps the carrier name when a real carrier is chosen", () => {
+    const result = answerStep(autoFlow, "currentCarrier", "State Farm", {});
+    expect(result.status).toBe("next");
+    if (result.status === "next") {
+      expect(result.answers).toMatchObject({ currentCarrier: "State Farm", hasActivePolicy: true });
+    }
+  });
+
+  it("derives hasActivePolicy: false and no carrier name for 'not currently insured'", () => {
+    const result = answerStep(autoFlow, "currentCarrier", "not-insured", {});
+    expect(result.status).toBe("next");
+    if (result.status === "next") {
+      expect(result.answers).toMatchObject({ hasActivePolicy: false });
+      expect(result.answers.currentCarrier).toBeUndefined();
+    }
+  });
+
   it("walks the full auto flow to completion", () => {
     const answersInOrder: Array<{ stepId: string; answer: unknown }> = [
       { stepId: "personalOrCommercial", answer: "personal" },
+      { stepId: "fullName", answer: "Jane Doe" },
+      { stepId: "phone", answer: "8651234567" },
+      { stepId: "smsConsent", answer: true },
+      { stepId: "email", answer: "jane@example.com" },
       { stepId: "vehicleYear", answer: "2021" },
       { stepId: "vehicleMake", answer: "Honda" },
       { stepId: "vehicleModel", answer: "Civic" },
       { stepId: "coverageType", answer: "full" },
       { stepId: "liabilityLimits", answer: "100-300-100" },
+      { stepId: "currentCarrier", answer: "State Farm" },
+      { stepId: "renewalDate", answer: undefined },
       { stepId: "dateOfBirth", answer: "1990-01-01" },
       { stepId: "licenseNumber", answer: undefined },
-      { stepId: "fullName", answer: "Jane Doe" },
-      { stepId: "phone", answer: "8651234567" },
-      { stepId: "email", answer: "jane@example.com" },
-      { stepId: "smsConsent", answer: true },
       { stepId: "notes", answer: undefined },
     ];
 
@@ -67,18 +86,21 @@ describe("answerStep", () => {
     expect(lastStatus).toBe("complete");
     expect(answers).toMatchObject({
       personalOrCommercial: "personal",
+      firstName: "Jane",
+      lastName: "Doe",
+      phone: "8651234567",
+      smsConsent: true,
+      email: "jane@example.com",
       vehicleYear: "2021",
       vehicleMake: "Honda",
       vehicleModel: "Civic",
       coverageType: "full",
       liabilityLimits: "100-300-100",
+      currentCarrier: "State Farm",
+      hasActivePolicy: true,
       dateOfBirth: "1990-01-01",
-      firstName: "Jane",
-      lastName: "Doe",
-      phone: "8651234567",
-      email: "jane@example.com",
-      smsConsent: true,
     });
+    expect(answers).not.toHaveProperty("renewalDate");
     expect(answers).not.toHaveProperty("licenseNumber");
     expect(answers).not.toHaveProperty("notes");
   });

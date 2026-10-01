@@ -144,7 +144,11 @@ export function quoteFormToLead(
       smsConsent: input.smsConsent,
     },
     insuredAssets: buildInsuredAssets(input),
-    renewalUrgency: {},
+    renewalUrgency: {
+      currentCarrier: input.currentCarrier,
+      renewalDate: input.renewalDate,
+      hasActivePolicy: input.hasActivePolicy,
+    },
     crossSellPotential: [],
     conversationSummary: conversationSummary ?? `Submitted via static ${input.family} quote form (no AI conversation).`,
     missingFields: [],
