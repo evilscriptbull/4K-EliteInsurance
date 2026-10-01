@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildUserMessage > matches the known snapshot format 1`] = `
+"Customer:
+First name: Jane
+State: TN
+SMS consent: true
+
+Line and family:
+Primary line: auto
+Family: auto
+Completeness: full
+
+Intent:
+Wants a personal auto quote for a 2021 Honda Civic.
+
+Missing fields:
+(none)
+
+Answers:
+coverageType: full
+vehicleMake: Honda
+vehicleModel: Civic
+vehicleYear: 2021
+
+Marketing source:
+utmSource: google
+utmMedium: cpc
+
+Allowed lines:
+auto, home, business, general-liability, workers-comp, commercial-property, builders-risk, commercial-auto, commercial-umbrella, contractors, group-life, life, collector-vehicle, boat, motorcycle, rv, rental-property, cyber, other
+
+Agency priority lines:
+workers-comp, general-liability"
+`;
