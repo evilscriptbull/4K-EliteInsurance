@@ -12,6 +12,12 @@ import { finalizeConversation } from "@/lib/conversations/finalize";
  */
 export const dynamic = "force-dynamic";
 
+// finalizeConversation (called below, once per abandoned conversation)
+// schedules an after() that runs generateAgentBrief + notifyAgentBrief --
+// needs more than Vercel's default 10s, especially with several
+// conversations swept in one invocation.
+export const maxDuration = 60;
+
 const IDLE_THRESHOLD_MS = 20 * 60 * 1000;
 
 /**

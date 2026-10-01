@@ -1,9 +1,14 @@
 import type { Lead } from "@/lib/schemas/lead";
 import type { StoredContactMessage } from "@/lib/contact/store";
 import type { StoredClaim } from "@/lib/claims/store";
+import type { AgentBrief } from "@/lib/schemas/agentBrief";
 import { sendSms } from "@/lib/integrations/goto/client";
+import { sendEmail } from "@/lib/integrations/resend/client";
 import { getQuoteFormFamily } from "@/lib/config/quote-forms";
 import { siteUrl } from "@/lib/config/site";
+import { agency } from "@/lib/config/agency";
+import { formatLine } from "@/lib/format/insuranceLine";
+import { AgentBriefEmail } from "@/components/emails/AgentBriefEmail";
 
 /**
  * Internal staff SMS notifications via GoTo — not customer-facing copy, so
@@ -19,15 +24,6 @@ function getNotifyNumber(): string | undefined {
     console.log("[goto] Notification not sent — GOTO_NOTIFY_PHONE_NUMBER not configured.");
   }
   return to;
-}
-
-export async function notifyNewLead(lead: Lead): Promise<void> {
-  const to = getNotifyNumber();
-  if (!to) return;
-
-  const contactInfo = lead.contact.phone ?? lead.contact.email ?? "no contact info";
-  const text = `New ${lead.line} lead (${lead.leadScoreTier}): ${lead.contact.firstName} ${lead.contact.lastName}, ${contactInfo}`;
-  await sendSms(to, text);
 }
 
 export async function notifyNewContactMessage(message: StoredContactMessage): Promise<void> {
@@ -69,29 +65,55 @@ export async function notifyScriptedChatFirstAnswer(params: {
   await sendSms(to, text);
 }
 
+/** US-centric: 10 digits -> assume +1; 11 digits starting with 1 -> as-is; already-"+"-prefixed -> digits only. Returns null if it can't produce something tel:-usable. */
+export function toE164(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (phone.trim().startsWith("+") && digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
+
+const NEXT_ACTION_LABEL: Record<AgentBrief["content"]["recommendedNextAction"], string> = {
+  "call-now": "Call now",
+  "call-today": "Call today",
+  "email-first": "Email first",
+  "schedule-review": "Schedule review",
+};
+
 /**
- * Fires whenever a Quick Quote Chat conversation finalizes into a Lead —
- * completed alone, chatted live then completed/released, or abandoned. This
- * text is currently the *only* place an associate learns what the customer
- * actually said (no dashboard lead detail view yet), so it's deliberately
- * more detailed than notifyNewLead's one-liner above. `lead.conversationSummary`
- * (set per-path by finalizeConversation, lib/conversations/finalize.ts)
- * carries the completed/claimed/released/abandoned framing and who handled
- * it, so this doesn't need to know the reason itself.
+ * Sends the internal email first (gated behind AGENT_BRIEF_EMAIL, default
+ * off) so the SMS's "Brief emailed to ..." line can report what actually
+ * happened, not what was merely attempted.
  */
-export async function notifyScriptedChatLead(lead: Lead): Promise<void> {
+async function maybeSendAgentBriefEmail(lead: Lead, brief: AgentBrief): Promise<boolean> {
+  if (process.env.AGENT_BRIEF_EMAIL !== "true") return false;
+  const result = await sendEmail(agency.email, `Agent brief: ${brief.content.headline}`, AgentBriefEmail({ lead, brief }));
+  return result.sent;
+}
+
+/**
+ * Fires once per Lead, scheduled via `after()` from finalizeConversation
+ * and the static quote route (see tasks/archive's Agent Brief plan) --
+ * replaces the old notifyScriptedChatLead/notifyNewLead one-liners now that
+ * every lead gets a real brief instead. SMS capped at 4 lines; the full
+ * detail goes to the optional internal email.
+ */
+export async function notifyAgentBrief(lead: Lead, brief: AgentBrief): Promise<void> {
+  const emailSent = await maybeSendAgentBriefEmail(lead, brief);
+
   const to = getNotifyNumber();
   if (!to) return;
 
-  const contactInfo = lead.contact.phone ?? lead.contact.email ?? "no contact info";
-  const asset = lead.insuredAssets[0]?.description ?? lead.insuredAssets[0]?.kind;
-  const completenessNote = lead.completeness === "partial" ? " (partial)" : "";
+  const { content } = brief;
+  const phoneLink = lead.contact.phone ? toE164(lead.contact.phone) : null;
+  const missing = content.missingFields.slice(0, 2);
+
   const lines = [
-    `Quick Quote Chat lead${completenessNote} (${lead.leadScoreTier}) — ${lead.line}`,
-    `${lead.contact.firstName} ${lead.contact.lastName} — ${contactInfo}`,
-    asset ? `Asset: ${asset}` : null,
-    lead.intent,
-    lead.conversationSummary,
+    `${content.urgency.tier.toUpperCase()} ${formatLine(content.primaryLine)} lead — ${content.headline}`,
+    `${lead.contact.firstName} ${lead.contact.lastName}${phoneLink ? ` · tel:${phoneLink}` : ""}`,
+    `Next: ${NEXT_ACTION_LABEL[content.recommendedNextAction]} · Missing: ${missing.length > 0 ? missing.join(", ") : "nothing critical"}`,
+    emailSent ? `Brief emailed to ${agency.email}` : null,
   ].filter((line): line is string => Boolean(line));
 
   await sendSms(to, lines.join("\n"));
