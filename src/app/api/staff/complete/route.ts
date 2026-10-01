@@ -6,6 +6,11 @@ import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
 import { broadcastToConversation } from "@/lib/conversations/broadcast";
 
+// finalizeConversation (called below) schedules an after() that runs
+// generateAgentBrief + notifyAgentBrief -- needs more than Vercel's
+// default 10s to finish once the response has gone out.
+export const maxDuration = 60;
+
 const completeSchema = z.object({
   conversationId: z.string().min(1),
 });

@@ -9,6 +9,11 @@ import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
 import { notifyScriptedChatFirstAnswer } from "@/lib/notifications/leadNotify";
 
+// finalizeConversation (called below on the "complete" branch) schedules
+// an after() that runs generateAgentBrief + notifyAgentBrief -- needs more
+// than Vercel's default 10s to finish once the response has gone out.
+export const maxDuration = 60;
+
 /**
  * Fires the staff SMS the first time any answer for this conversation is
  * successfully persisted -- markStaffPinged's atomic guard (store.ts) makes

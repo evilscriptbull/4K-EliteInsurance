@@ -1,8 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createConversation, getConversation, type StoredConversation } from "@/lib/conversations/store";
 import { finalizeConversation } from "@/lib/conversations/finalize";
 import { getLeads } from "@/lib/leads/store";
 import { getLeadOutcomesByIds } from "@/lib/leads/outcomes";
+
+// after() throws outside a real request scope, which these direct,
+// non-HTTP calls to finalizeConversation never have. Stubbed as a no-op
+// (not "run the callback immediately") so these tests don't also depend
+// on the real Anthropic API / GoTo SMS that generateAgentBrief and
+// notifyAgentBrief would otherwise reach for -- the after()-scheduled
+// brief/notification path itself is covered by the live verification,
+// not this unit test file.
+vi.mock("next/server", () => ({ after: vi.fn() }));
 
 // DATABASE_URL is unset in the test environment, so this exercises the
 // in-memory conversation/lead store fallback branches (see store.test.ts's

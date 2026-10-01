@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { Lead } from "@/lib/schemas/lead";
 import type { StoredConversation } from "@/lib/conversations/lifecycle";
 import { getConversation, setLeadIdIfMissing } from "@/lib/conversations/store";
@@ -5,7 +6,8 @@ import { addLead, getLeadById } from "@/lib/leads/store";
 import { getAssociate } from "@/lib/associates/store";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { scriptedAnswersToLead, conversationToPartialLead, scriptedStepProgress } from "@/lib/scripted-chat/finalize";
-import { notifyScriptedChatLead } from "@/lib/notifications/leadNotify";
+import { generateAgentBrief } from "@/lib/ai/agentBrief/generate";
+import { notifyAgentBrief } from "@/lib/notifications/leadNotify";
 import { sendQuoteConfirmationEmail } from "@/lib/notifications/emailNotify";
 import { pushLeadToEZLynx } from "@/lib/integrations/ezlynx/adapter";
 
@@ -83,7 +85,7 @@ export async function finalizeConversation(id: string, reason: FinalizeReason): 
   // (tasks/todo.md 3.4).
   await addLead(lead, { assignedTo: conversation.claimedBy });
 
-  const sideEffects: Promise<unknown>[] = [notifyScriptedChatLead(lead), pushLeadToEZLynx(lead)];
+  const sideEffects: Promise<unknown>[] = [pushLeadToEZLynx(lead)];
   if (reason === "completed-unclaimed") {
     // An associate who just handled the customer live already gave them
     // context in the moment -- Elite's own auto-confirmation email is only
@@ -91,6 +93,17 @@ export async function finalizeConversation(id: string, reason: FinalizeReason): 
     sideEffects.push(sendQuoteConfirmationEmail(lead));
   }
   await Promise.all(sideEffects);
+
+  // Scheduled after the response, not awaited here -- a model call plus an
+  // SMS/email send must never delay the customer's response or the
+  // associate's staff-route response. Never throws past this point: both
+  // generateAgentBrief and notifyAgentBrief are themselves fail-safe, this
+  // catch is only for something unexpected between them.
+  after(() =>
+    generateAgentBrief(lead, conversation)
+      .then((brief) => notifyAgentBrief(lead, brief))
+      .catch((error) => console.error("[ai] brief after() failed", error)),
+  );
 
   return lead;
 }
