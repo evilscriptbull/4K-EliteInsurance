@@ -35,6 +35,15 @@ export interface ScriptedStep {
    * not as an answers key.
    */
   spreadFields?: boolean;
+  /**
+   * Only meaningful when `spreadFields` is true, and only needed when the
+   * step's keys can't be derived generically (its `schema` is a
+   * `.transform()`, not an introspectable `z.object` shape) -- the exact
+   * `collectedFields` keys this step produces, so a label lookup
+   * (buildFieldLabelLookup, lib/scripted-chat/labels.ts) can map each one
+   * back to this step's prompt. Defaults to `[field]` when omitted.
+   */
+  producedFields?: string[];
   /** Given all answers collected so far (including this step's), returns the next step id, or null if the flow is complete. */
   next: (answers: Record<string, unknown>) => string | null;
 }

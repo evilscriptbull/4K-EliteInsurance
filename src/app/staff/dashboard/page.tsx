@@ -6,6 +6,8 @@ import { listLive, type StoredConversation } from "@/lib/conversations/store";
 import { listMessages, type StoredMessage } from "@/lib/conversations/messages";
 import { listOpenLeadsForFollowUp, type FollowUpLead } from "@/lib/leads/outcomes";
 import { getQuoteFormFamily } from "@/lib/config/quote-forms";
+import { getScriptedFlow } from "@/lib/scripted-chat/flows";
+import { buildFieldLabelLookup, type FieldLabel } from "@/lib/scripted-chat/labels";
 import { Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { ClaimButton } from "@/components/staff/ClaimButton";
@@ -23,10 +25,6 @@ function familyLabel(slug: string): string {
   return getQuoteFormFamily(slug)?.label ?? slug;
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-}
-
 /** "2026-09-30T12:00:00Z" -> "3h ago" */
 function timeAgo(iso: string): string {
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -37,24 +35,48 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** "vehicleYear" -> "Vehicle Year" */
+/** True once a conversation has gone 5+ minutes without a new answer or message. */
+function isIdle(updatedAt: string): boolean {
+  return Date.now() - new Date(updatedAt).getTime() > 5 * 60 * 1000;
+}
+
+/** "vehicleYear" -> "Vehicle Year" -- fallback for any key a flow lookup doesn't recognize. */
 function humanizeFieldName(key: string): string {
   return key.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
 }
 
-function CollectedAnswers({ fields }: { fields: Record<string, unknown> }) {
+function formatAnswerValue(value: unknown, type?: FieldLabel["type"]): string {
+  if (type === "boolean") return value === true ? "Yes" : "No";
+  if (type === "date" && typeof value === "string") {
+    // Parsed directly from the YYYY-MM-DD string, not via `new Date()` --
+    // that parses date-only strings as UTC midnight, which
+    // `toLocaleDateString` then renders in the server's local timezone,
+    // shifting the displayed day back by one for any timezone behind UTC.
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (match) {
+      const [, year, month, day] = match;
+      return `${Number(month)}/${Number(day)}/${year}`;
+    }
+  }
+  return String(value);
+}
+
+function CollectedAnswers({ fields, labels }: { fields: Record<string, unknown>; labels?: Map<string, FieldLabel> }) {
   const entries = Object.entries(fields).filter(([, value]) => value !== undefined && value !== "");
   if (entries.length === 0) {
     return <p className="mt-2 text-xs italic text-brand-500">No answers collected yet.</p>;
   }
   return (
     <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-      {entries.map(([key, value]) => (
-        <div key={key}>
-          <dt className="text-brand-500">{humanizeFieldName(key)}</dt>
-          <dd className="text-brand-800">{String(value)}</dd>
-        </div>
-      ))}
+      {entries.map(([key, value]) => {
+        const label = labels?.get(key);
+        return (
+          <div key={key}>
+            <dt className="text-brand-500">{label?.prompt ?? humanizeFieldName(key)}</dt>
+            <dd className="text-brand-800">{formatAnswerValue(value, label?.type)}</dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }
@@ -188,17 +210,20 @@ function LiveCard({
   initialMessages?: StoredMessage[];
 }) {
   const claimedByMe = conversation.claimedBy === currentUserId;
+  const flow = getScriptedFlow(conversation.familySlug);
+  const labels = flow ? buildFieldLabelLookup(flow) : undefined;
+  const idle = isIdle(conversation.updatedAt);
 
   return (
-    <Card className="bg-background text-foreground">
+    <Card className={`bg-background text-foreground ${idle ? "opacity-50" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="font-serif text-lg font-semibold text-brand-900">{familyLabel(conversation.familySlug)}</p>
           <p className="text-xs text-brand-600">
             {conversation.status === "claimed" ? `Claimed by ${claimedByMe ? "you" : (claimedByName ?? "someone")}` : "Unclaimed"} ·
-            Started {formatTime(conversation.createdAt)}
+            Last activity {timeAgo(conversation.updatedAt)}
           </p>
-          <CollectedAnswers fields={conversation.state.collectedFields as Record<string, unknown>} />
+          <CollectedAnswers fields={conversation.state.collectedFields as Record<string, unknown>} labels={labels} />
           {claimedByMe && initialMessages && (
             <LiveChatPanel conversationId={conversation.id} initialMessages={initialMessages} />
           )}

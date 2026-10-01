@@ -103,6 +103,7 @@ export const autoFlow: ScriptedFlow = {
       prompt: "Almost done — what's your first and last name?",
       type: "text",
       spreadFields: true,
+      producedFields: ["firstName", "lastName"],
       schema: z
         .string()
         .trim()
