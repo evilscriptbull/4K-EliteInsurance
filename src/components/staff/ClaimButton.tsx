@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { Button } from "@/components/ui/Button";
+import { AgentBriefPanel } from "@/components/staff/AgentBriefPanel";
+import type { AgentBriefContent } from "@/lib/schemas/agentBrief";
 
 export function ClaimButton({ conversationId }: { conversationId: string }) {
   const router = useRouter();
   const [supabase] = useState(() => getSupabaseBrowserClient());
   const [status, setStatus] = useState<"idle" | "claiming" | "taken">("idle");
+  const [instantBrief, setInstantBrief] = useState<AgentBriefContent | null>(null);
 
   async function handleClaim() {
     if (!supabase) return;
@@ -33,6 +36,11 @@ export function ClaimButton({ conversationId }: { conversationId: string }) {
       return;
     }
 
+    // Inherently transient -- this component unmounts the moment the
+    // refreshed server payload shows status "claimed" (LiveCard stops
+    // rendering ClaimButton at all then), so there's no need to clear
+    // this state afterward.
+    if (json.instantBrief) setInstantBrief(json.instantBrief as AgentBriefContent);
     router.refresh();
   }
 
@@ -41,8 +49,15 @@ export function ClaimButton({ conversationId }: { conversationId: string }) {
   }
 
   return (
-    <Button size="sm" onClick={handleClaim} disabled={status === "claiming"}>
-      {status === "claiming" ? "Claiming…" : "Claim"}
-    </Button>
+    <div>
+      <Button size="sm" onClick={handleClaim} disabled={status === "claiming"}>
+        {status === "claiming" ? "Claiming…" : "Claim"}
+      </Button>
+      {instantBrief && (
+        <div className="mt-2">
+          <AgentBriefPanel content={instantBrief} />
+        </div>
+      )}
+    </div>
   );
 }

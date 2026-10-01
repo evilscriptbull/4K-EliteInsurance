@@ -5,6 +5,8 @@ import { getAssociate, listActiveAssociates } from "@/lib/associates/store";
 import { listLive, type StoredConversation } from "@/lib/conversations/store";
 import { listMessages, type StoredMessage } from "@/lib/conversations/messages";
 import { listOpenLeadsForFollowUp, type FollowUpLead } from "@/lib/leads/outcomes";
+import { getAgentBriefsForLeadIds } from "@/lib/ai/agentBrief/store";
+import type { AgentBrief } from "@/lib/schemas/agentBrief";
 import { getQuoteFormFamily } from "@/lib/config/quote-forms";
 import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 import { buildFieldLabelLookup, type FieldLabel } from "@/lib/scripted-chat/labels";
@@ -18,6 +20,8 @@ import { LiveChatPanel } from "@/components/staff/LiveChatPanel";
 import { TakeButton } from "@/components/staff/leads/TakeButton";
 import { ReleaseButton } from "@/components/staff/leads/ReleaseButton";
 import { LogOutcomeForm } from "@/components/staff/leads/LogOutcomeForm";
+import { AgentBriefPanel } from "@/components/staff/AgentBriefPanel";
+import { ExpandableBriefSection } from "@/components/staff/ExpandableBriefSection";
 
 const DEFAULT_FOLLOW_UP_LIMIT = 50;
 
@@ -119,6 +123,9 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
   const hasMoreFollowUp = followUpLeadsPlusOne.length > requestedLimit;
   const followUpLeads = followUpLeadsPlusOne.slice(0, requestedLimit);
 
+  // One batched query for the whole queue, not one lookup per card.
+  const briefsByLeadId = await getAgentBriefsForLeadIds(followUpLeads.map(({ lead }) => lead.id));
+
   // Only fetched for conversations claimed by the viewer themselves — the
   // live-chat panel needs full transcript context, but nobody else's
   // dashboard card needs it (avoids an N+1 fetch across the whole queue).
@@ -181,6 +188,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                 outcome={outcome}
                 currentUserId={user.id}
                 assigneeName={outcome.assignedTo ? associateNames.get(outcome.assignedTo) : undefined}
+                brief={briefsByLeadId.get(lead.id)}
               />
             ))}
           </div>
@@ -240,11 +248,13 @@ function FollowUpCard({
   outcome,
   currentUserId,
   assigneeName,
+  brief,
 }: {
   lead: FollowUpLead["lead"];
   outcome: FollowUpLead["outcome"];
   currentUserId: string;
   assigneeName?: string;
+  brief?: AgentBrief;
 }) {
   const name = `${lead.contact.firstName} ${lead.contact.lastName}`.trim();
   const assignedToMe = outcome.assignedTo === currentUserId;
@@ -271,6 +281,11 @@ function FollowUpCard({
             {assignedToMe ? "Assigned to you" : assigneeName ? `Assigned to ${assigneeName}` : "Unclaimed"}
           </p>
           <LogOutcomeForm leadId={lead.id} currentStatus={outcome.status} />
+          {brief && (
+            <ExpandableBriefSection>
+              <AgentBriefPanel content={brief.content} meta={{ origin: brief.origin, model: brief.model, promptVersion: brief.promptVersion }} />
+            </ExpandableBriefSection>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           {!outcome.assignedTo && <TakeButton leadId={lead.id} />}
