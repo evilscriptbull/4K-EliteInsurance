@@ -14,7 +14,16 @@ import type { StoredConversation } from "@/lib/conversations/lifecycle";
 // estimate or a PII leak back out even if the model never used a banned
 // phrase. 7+ consecutive digits only (not spaced/dashed like redact.ts's
 // input-side rule), matching the archived spec's post-validation wording.
-const DOLLAR_AMOUNT_PATTERN = /\$\d/;
+//
+// Delta from the archived spec, found live during PR 7's eval run (see
+// tasks/todo.md): the spec also called for rejecting any `$`+digits as a
+// belt-and-braces anti-price-estimate check. That rejected *every*
+// collector-vehicle/home/life brief in practice, because those leads'
+// Lead.intent legitimately states a real customer value ("estimated value
+// $62,000", "dwelling coverage $420,000") -- a fact the model correctly
+// restated, not a fabricated premium. The premium/rate pattern below
+// already catches an actual fabricated price estimate; the bare `$`+digit
+// check only ever caught legitimate restated facts, so it's removed.
 const PREMIUM_OR_RATE_WITH_NUMBER_PATTERN = /\b(premium|rate)\b[^\n]{0,20}\d/i;
 const DIGIT_LEAK_PATTERN = /\d{7,}/;
 
@@ -44,7 +53,6 @@ export function validateBriefContent(content: AgentBriefContent, lead: Lead): Br
   forEachStringLeaf(adjusted, (text) => {
     if (violation) return;
     if (violatesGuardrails(text)) violation = `banned phrase in "${text}"`;
-    else if (DOLLAR_AMOUNT_PATTERN.test(text)) violation = `dollar amount in "${text}"`;
     else if (PREMIUM_OR_RATE_WITH_NUMBER_PATTERN.test(text)) violation = `premium/rate estimate in "${text}"`;
     else if (DIGIT_LEAK_PATTERN.test(text)) violation = `possible PII leak (7+ digits) in "${text}"`;
   });

@@ -186,10 +186,16 @@ describe("validateBriefContent", () => {
     if (result.ok) expect(result.content.crossSellCandidates).toEqual(["home"]);
   });
 
-  it("rejects a dollar amount", () => {
+  it("accepts a legitimate customer-stated dollar amount (e.g. a restated asset value)", () => {
+    // A bare "$"+digits is no longer a rejection trigger on its own -- see
+    // generate.ts's comment on PREMIUM_OR_RATE_WITH_NUMBER_PATTERN. Real
+    // leads (home dwelling coverage, life amount requested, collector
+    // vehicle value) legitimately restate a real dollar figure that's
+    // already in Lead.intent; only an actual premium/rate estimate (below)
+    // is rejected.
     const lead = makeLead();
-    const result = validateBriefContent(validContent(lead, { summary: "Estimated at $1200 a year." }), lead);
-    expect(result.ok).toBe(false);
+    const result = validateBriefContent(validContent(lead, { summary: "Customer's stated vehicle value is $62,000." }), lead);
+    expect(result.ok).toBe(true);
   });
 
   it("rejects a premium/rate estimate", () => {
