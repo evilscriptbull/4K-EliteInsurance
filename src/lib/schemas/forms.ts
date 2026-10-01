@@ -77,7 +77,7 @@ export const autoQuoteSchema = quoteContactBase.extend({
 
 export const homeQuoteSchema = quoteContactBase.extend({
   family: z.literal("home"),
-  dateOfBirth: z.iso.date(),
+  dateOfBirth: z.iso.date().optional(),
   dwellingCoverageAmount: z.number().positive(),
   liabilityLimit: z.enum(["500000", "300000", "100000"]),
   deductible: z.enum(["1000", "2500", "5000", "other"]),
@@ -86,7 +86,7 @@ export const homeQuoteSchema = quoteContactBase.extend({
 export const recreationalQuoteSchema = quoteContactBase.extend({
   family: z.literal("recreational"),
   vehicleType: z.enum(["boat", "motorcycle", "rv", "other"]),
-  dateOfBirth: z.iso.date(),
+  dateOfBirth: z.iso.date().optional(),
   vehicleYear: z.string().min(4),
   vehicleMake: z.string().min(1),
   vehicleModel: z.string().min(1),

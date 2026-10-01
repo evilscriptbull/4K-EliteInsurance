@@ -22,7 +22,7 @@ export function HomeQuoteForm() {
     const { success, data } = await submit({
       family: "home",
       ...parseQuoteContactFields(formData),
-      dateOfBirth: formData.get("dateOfBirth"),
+      dateOfBirth: formData.get("dateOfBirth") || undefined,
       dwellingCoverageAmount: Number(formData.get("dwellingCoverageAmount")),
       liabilityLimit: formData.get("liabilityLimit"),
       deductible: formData.get("deductible"),
@@ -39,7 +39,7 @@ export function HomeQuoteForm() {
       <HoneypotField />
       <QuoteContactFields fieldErrors={fieldErrors} />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="dateOfBirth" label="Date of Birth" type="date" required error={fieldErrors.dateOfBirth?.[0]} />
+        <TextField name="dateOfBirth" label="Date of Birth" type="date" error={fieldErrors.dateOfBirth?.[0]} />
         <TextField
           name="dwellingCoverageAmount"
           label="Dwelling Coverage Amount ($)"
