@@ -144,4 +144,58 @@ describe("quoteFormToLead", () => {
     expect(lead.line).toBe("workers-comp");
     expect(lead.insuredAssets[0]).toMatchObject({ kind: "business", description: "Acme Roofing" });
   });
+
+  it("maps Phase 5.2's new business fields into insuredAssets[0].details", () => {
+    const input: QuoteFormInput = {
+      ...baseContact,
+      family: "business",
+      businessName: "Acme Co",
+      businessAddress: "123 Main St",
+      coverageType: "general-liability",
+      businessEntity: "llc",
+      operationsDescription: "General retail store",
+      liabilityCoverageRequested: "1000000",
+      yearsInBusiness: 5,
+      employees: 10,
+      annualPayroll: "250k-500k",
+      annualRevenue: "500k-1m",
+      usesSubcontractors: false,
+      vehicleCount: 2,
+      currentCarrier: "Travelers",
+      renewalDate: "2026-11-15",
+      hasActivePolicy: true,
+    };
+    const lead = quoteFormToLead(input);
+    expect(lead.insuredAssets[0].details).toMatchObject({
+      yearsInBusiness: 5,
+      employees: 10,
+      annualPayroll: "250k-500k",
+      annualRevenue: "500k-1m",
+      usesSubcontractors: false,
+      vehicleCount: 2,
+    });
+    expect(lead.renewalUrgency).toMatchObject({
+      currentCarrier: "Travelers",
+      renewalDate: "2026-11-15",
+      hasActivePolicy: true,
+    });
+  });
+
+  it("maps the contractors branch's trade/needsCertificates into insuredAssets[0].details", () => {
+    const input: QuoteFormInput = {
+      ...baseContact,
+      family: "business",
+      businessName: "Bob's Roofing",
+      businessAddress: "456 Oak St",
+      coverageType: "contractors",
+      businessEntity: "individual",
+      operationsDescription: "Residential roofing",
+      liabilityCoverageRequested: "other",
+      trade: "roofing",
+      needsCertificates: true,
+    };
+    const lead = quoteFormToLead(input);
+    expect(lead.line).toBe("contractors");
+    expect(lead.insuredAssets[0].details).toMatchObject({ trade: "roofing", needsCertificates: true });
+  });
 });

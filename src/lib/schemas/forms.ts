@@ -108,7 +108,10 @@ export const businessQuoteSchema = quoteContactBase.extend({
   family: z.literal("business"),
   businessName: z.string().min(1),
   businessAddress: z.string().min(1),
-  businessPhone: z.string().min(7),
+  // Optional as of Phase 5.2 -- the personal phone in quoteContactBase is
+  // already required and captured early in the chat flow, so this is now a
+  // supplementary business-line number, not the only way to reach them.
+  businessPhone: z.string().min(7).optional(),
   coverageType: z.enum([
     "business",
     "general-liability",
@@ -124,6 +127,17 @@ export const businessQuoteSchema = quoteContactBase.extend({
   businessEntity: z.enum(["individual", "partnership", "corporation", "llc", "other"]),
   operationsDescription: z.string().min(1),
   liabilityCoverageRequested: z.enum(["5000000", "3000000", "2000000", "1000000", "500000", "300000", "other"]),
+  // Added for Phase 5.2 (tasks/todo.md) -- the chat flow asks these; the
+  // static form does not, so they're optional here too.
+  yearsInBusiness: z.number().int().nonnegative().optional(),
+  employees: z.number().int().nonnegative().optional(),
+  annualPayroll: z.enum(["under-100k", "100k-250k", "250k-500k", "500k-1m", "over-1m", "not-sure"]).optional(),
+  annualRevenue: z.enum(["under-250k", "250k-500k", "500k-1m", "1m-5m", "over-5m", "not-sure"]).optional(),
+  usesSubcontractors: z.boolean().optional(),
+  vehicleCount: z.number().int().nonnegative().optional(),
+  // Contractors sub-flow only (coverageType === "contractors").
+  trade: z.enum(["roofing", "hvac", "electrical", "plumbing", "landscaping", "general-contractor", "other"]).optional(),
+  needsCertificates: z.boolean().optional(),
 });
 
 export const quoteFormSchema = z.discriminatedUnion("family", [
