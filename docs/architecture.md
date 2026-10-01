@@ -26,6 +26,7 @@ flowchart LR
         Compliance["Deterministic Compliance Layer\n(guardrails, state disclaimers)"]
         ContentEngine["AI Content Engine\n(seasonal calendar, drafting)"]
         Gateway["Model Gateway\n(provider-agnostic)"]
+        AgentBrief["Agent Brief\n(internal, staff-only pre-call brief)"]
     end
 
     subgraph Data
@@ -47,6 +48,9 @@ flowchart LR
     LeadWarmer --> ConvState
     ConvState --> LeadSchema
     LeadSchema --> CRM
+    LeadSchema --> AgentBrief
+    AgentBrief --> Gateway
+    AgentBrief --> Nurture
     CRM --> Nurture
     Nurture --> LeadWarmer
     LeadSchema --> Events
@@ -167,3 +171,24 @@ A full review of the live-chat/staff-dashboard code (`tasks/todo.md`, 2026-09-24
 - The Realtime read policy on `conversations` (originally `authenticated_can_read_conversations`, `USING (true)` — any logged-in user, from `migrations/0004_...sql`) is replaced by `active_associate_can_read_conversations`, gated on a new `SECURITY DEFINER` SQL function `public.is_active_associate()` (`migrations/0005_active_associate_realtime_policy.sql`). The function's `search_path` is pinned (`SET search_path = public, pg_temp`) since an unpinned search_path on a `SECURITY DEFINER` function is a known privilege-escalation vector; `GRANT EXECUTE` to `authenticated` is required since Postgres doesn't grant execute on new functions by default.
 
 Not yet done (tracked in `tasks/todo.md` Phase 1+): the `answer` route now stores and checks `currentStepId` server-side rather than trusting the client's submitted step, `claimConversation()` requires `status = "in-progress"`, and the finalize-on-complete path is wrapped in try/catch so a schema mismatch returns a handled error instead of an uncaught 500 — all landed alongside the access-model work above since they were part of the same Phase 0 pass. The page-load staff SMS on `/api/scripted-chat/start` was removed with nothing replacing it yet; Phase 3 re-adds a smarter "ping on the first answer" version.
+
+## Agent Brief (internal LLM use)
+
+An internal, staff-only pre-call brief generated server-side the moment any Lead is created (chat or static form) — never shown to the customer. Replaces the old one-line staff SMS with a real summary: what the customer wants, how urgent it is, what's missing, what to ask on the call, and what to cross-sell.
+
+| Decision | Choice | Why |
+|---|---|---|
+| Where it runs | Server-side, after the Lead is stored, via Next's `after()` | Brief generation must never delay or fail the customer's response |
+| Who sees it | Agency staff only — SMS, the staff dashboard, and an optional internal email | Guardrails still apply as defense in depth even though it's internal-only |
+| Model | `claude-sonnet-5` by default (`src/lib/ai/gateway.ts`), overridable via `AI_MODEL` | Chosen directly over `claude-opus-5-5` for cost/speed — briefs are short and run on every lead |
+| Output shape | Structured output validated against `agentBriefContentSchema` (`src/lib/schemas/agentBrief.ts`) | The dashboard and SMS need fields, not prose |
+| Failure mode | `buildFallbackBrief()` (deterministic, no model call) always runs first; the model's output replaces it only if it passes validation and guardrails | A brief must always exist, even with no API key or a rejected model response |
+| PII sent to the model | First name, line, structured answers minus phone/email/lastName/dateOfBirth/licenseNumber/businessPhone/businessAddress/company_website/gclid, plus 7+-digit runs and email-shaped tokens redacted from every remaining string | Least-privilege data access — the agent already has full contact info from the Lead itself |
+| Live-chat transcript | Included only once a conversation is claimed (`conversation.claimedAt` set); messages at/after that point, both customer and associate, same redaction applied to both | The pre-claim portion is already captured structurally in the answers; nothing from the live takeover should bypass redaction just because an associate typed it |
+| Mutating the Lead | No — the brief is a separate `agent_briefs` row linked by `lead_id` | Keeps `Lead` the stable contract EZLynx will eventually consume |
+
+**Data flow**: `finalizeConversation` / `api/quote` → `addLead` → respond to the customer → `after()` schedules `generateAgentBrief(lead, conversation)` → `redactForModel` builds the model-facing input → `generateStructured` (the Model Gateway) → `validateBriefContent` forces `primaryLine` back to the Lead's real line and sweeps every string for banned phrases, a fabricated premium/rate estimate, or a leaked 7+-digit PII run → `saveAgentBrief` → `notifyAgentBrief` sends the 4-line staff SMS (and the internal email, behind `AGENT_BRIEF_EMAIL`).
+
+**Claim-time instant snapshot**: claiming a live conversation (`api/staff/claim`) also returns a transient, never-persisted `buildFallbackBrief` built from whatever's been answered so far — shown briefly in the dashboard while the page refreshes into the live-chat view, not a model call.
+
+**Real cost** (one `scripts/eval-agent-brief.mjs` run against the 6 family fixtures, 2026-10-01, model `claude-sonnet-5`): 1,864 input / 3,998 output tokens total across 6 briefs (281-331 in / 606-758 out per brief), prompt caching active from the second call on. At Sonnet 5's published per-token rate, that's roughly $0.01-0.02 per brief — all 6 fixtures returned `origin: "model"`, no guardrail rejections, and the one fixture with a phone number embedded in free text (`intent`) produced a brief with zero raw digits in the output.
