@@ -13,6 +13,9 @@ import { ClaimedActions } from "@/components/staff/ClaimedActions";
 import { SignOutButton } from "@/components/staff/SignOutButton";
 import { DashboardLiveRefresh } from "@/components/staff/DashboardLiveRefresh";
 import { LiveChatPanel } from "@/components/staff/LiveChatPanel";
+import { TakeButton } from "@/components/staff/leads/TakeButton";
+import { ReleaseButton } from "@/components/staff/leads/ReleaseButton";
+import { LogOutcomeForm } from "@/components/staff/leads/LogOutcomeForm";
 
 const DEFAULT_FOLLOW_UP_LIMIT = 50;
 
@@ -153,6 +156,8 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
               <FollowUpCard
                 key={lead.id}
                 lead={lead}
+                outcome={outcome}
+                currentUserId={user.id}
                 assigneeName={outcome.assignedTo ? associateNames.get(outcome.assignedTo) : undefined}
               />
             ))}
@@ -205,13 +210,24 @@ function LiveCard({
   );
 }
 
-function FollowUpCard({ lead, assigneeName }: { lead: FollowUpLead["lead"]; assigneeName?: string }) {
+function FollowUpCard({
+  lead,
+  outcome,
+  currentUserId,
+  assigneeName,
+}: {
+  lead: FollowUpLead["lead"];
+  outcome: FollowUpLead["outcome"];
+  currentUserId: string;
+  assigneeName?: string;
+}) {
   const name = `${lead.contact.firstName} ${lead.contact.lastName}`.trim();
+  const assignedToMe = outcome.assignedTo === currentUserId;
 
   return (
     <Card className="bg-background text-foreground">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="font-serif text-lg font-semibold text-brand-900">
             {name || "No name collected"}
             <span className="ml-2 text-xs font-normal uppercase text-accent-600">{lead.leadScoreTier}</span>
@@ -226,7 +242,14 @@ function FollowUpCard({ lead, assigneeName }: { lead: FollowUpLead["lead"]; assi
           <p className="text-xs text-brand-600">
             {lead.line} · {lead.channel} · {lead.completeness === "partial" ? "partial" : "full"} · {timeAgo(lead.createdAt)}
           </p>
-          <p className="text-xs text-brand-600">{assigneeName ? `Assigned to ${assigneeName}` : "Unclaimed"}</p>
+          <p className="text-xs text-brand-600">
+            {assignedToMe ? "Assigned to you" : assigneeName ? `Assigned to ${assigneeName}` : "Unclaimed"}
+          </p>
+          <LogOutcomeForm leadId={lead.id} currentStatus={outcome.status} />
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          {!outcome.assignedTo && <TakeButton leadId={lead.id} />}
+          {assignedToMe && <ReleaseButton leadId={lead.id} />}
         </div>
       </div>
     </Card>
