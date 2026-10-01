@@ -29,6 +29,11 @@ describe("scriptedAnswersToLead", () => {
   it("throws when required fields are missing (partial conversation)", () => {
     expect(() => scriptedAnswersToLead("auto", { personalOrCommercial: "personal" })).toThrow();
   });
+
+  it("honors an explicit channel override (e.g. chat-live for a claimed conversation)", () => {
+    const lead = scriptedAnswersToLead("auto", fullAutoAnswers, {}, "chat-live");
+    expect(lead.channel).toBe("chat-live");
+  });
 });
 
 describe("scriptedStepProgress", () => {
@@ -91,5 +96,11 @@ describe("conversationToPartialLead", () => {
   it("is satisfied by phone/email alone even without a name", () => {
     const lead = conversationToPartialLead(autoFlow, "auto", { phone: "8651234567" }, "vehicleYear");
     expect(lead).not.toBeNull();
+  });
+
+  it("honors an explicit channel override (e.g. chat-live for a claimed conversation)", () => {
+    const answers = { personalOrCommercial: "personal", vehicleYear: "2021", firstName: "Jane", lastName: "Doe" };
+    const lead = conversationToPartialLead(autoFlow, "auto", answers, "vehicleMake", {}, "chat-live");
+    expect(lead?.channel).toBe("chat-live");
   });
 });

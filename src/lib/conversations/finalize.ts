@@ -56,14 +56,15 @@ export async function finalizeConversation(id: string, reason: FinalizeReason): 
 
   const answers = conversation.state.collectedFields;
   const source = conversation.state.source ?? {};
+  const channel: Lead["channel"] = conversation.claimedBy ? "chat-live" : "chat";
 
   let lead: Lead | null;
   try {
-    lead = scriptedAnswersToLead(conversation.familySlug, answers, source);
+    lead = scriptedAnswersToLead(conversation.familySlug, answers, source, channel);
   } catch {
     const flow = getScriptedFlow(conversation.familySlug);
     lead = flow
-      ? conversationToPartialLead(flow, conversation.familySlug, answers, conversation.state.currentStepId, source)
+      ? conversationToPartialLead(flow, conversation.familySlug, answers, conversation.state.currentStepId, source, channel)
       : null;
   }
   if (!lead) return null;
