@@ -8,6 +8,7 @@ import { CheckIcon } from "@/components/icons/ui";
 import { InsuranceLineIcon } from "@/components/icons/InsuranceLineIcon";
 import { agency, priorityLines, type InsuranceLine } from "@/lib/config/agency";
 import { resolveQuoteFormFamily } from "@/lib/config/quote-forms";
+import { getScriptedFlow } from "@/lib/scripted-chat/flows";
 
 interface SecondaryCta {
   label: string;
@@ -41,7 +42,11 @@ export function LineLandingPage({
   children?: ReactNode;
 }) {
   const quoteFamily = resolveQuoteFormFamily(insuranceLine);
-  const quoteHref = `/quote/${quoteFamily.slug}`;
+  // Phase 5.4 (tasks/todo.md): once a family has a scripted chat flow, every
+  // landing-page CTA that would otherwise send the visitor to the static
+  // form instead starts the chat -- generic over all 12 pages, not per page.
+  const hasChat = Boolean(getScriptedFlow(quoteFamily.slug));
+  const quoteHref = hasChat ? `/quote/${quoteFamily.slug}/chat` : `/quote/${quoteFamily.slug}`;
   const isPriority = priorityLines.includes(insuranceLine);
 
   return (
