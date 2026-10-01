@@ -24,7 +24,7 @@ export function AutoQuoteForm() {
       family: "auto",
       ...parseQuoteContactFields(formData),
       personalOrCommercial: formData.get("personalOrCommercial"),
-      dateOfBirth: formData.get("dateOfBirth"),
+      dateOfBirth: formData.get("dateOfBirth") || undefined,
       licenseNumber: formData.get("licenseNumber") || undefined,
       vehicleYear: formData.get("vehicleYear"),
       vehicleMake: formData.get("vehicleMake"),
@@ -54,7 +54,7 @@ export function AutoQuoteForm() {
         error={fieldErrors.personalOrCommercial?.[0]}
       />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="dateOfBirth" label="Date of Birth" type="date" required error={fieldErrors.dateOfBirth?.[0]} />
+        <TextField name="dateOfBirth" label="Date of Birth" type="date" error={fieldErrors.dateOfBirth?.[0]} />
         <TextField name="licenseNumber" label="Driver's License Number" error={fieldErrors.licenseNumber?.[0]} />
       </div>
       <div className="grid gap-5 sm:grid-cols-3">

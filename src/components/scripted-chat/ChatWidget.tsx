@@ -396,6 +396,11 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
                   {option.label}
                 </Button>
               ))}
+              {step.optional && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => submitAnswer(undefined, "(skipped)")}>
+                  Skip
+                </Button>
+              )}
             </div>
           ) : (
             <form onSubmit={handleTextSubmit} className="flex gap-2">

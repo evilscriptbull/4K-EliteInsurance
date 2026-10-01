@@ -11,7 +11,7 @@ describe("buildFieldLabelLookup", () => {
   });
 
   it("maps both of a spreadFields step's produced keys to the same prompt", () => {
-    const fullNamePrompt = "Almost done — what's your first and last name?";
+    const fullNamePrompt = "First, what's your first and last name?";
     expect(lookup.get("firstName")).toEqual({ prompt: fullNamePrompt, type: "text" });
     expect(lookup.get("lastName")).toEqual({ prompt: fullNamePrompt, type: "text" });
   });
