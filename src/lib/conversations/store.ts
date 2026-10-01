@@ -244,23 +244,6 @@ export async function completeConversation(id: string, associateId: string): Pro
   return transition(id, { from: ["claimed"], to: "completed-claimed", claimedBy: associateId });
 }
 
-/** Conversations heading toward (or needing) a Lead -- the "needs follow-up" dashboard view. */
-export async function listNeedsFollowUp(): Promise<readonly StoredConversation[]> {
-  const statuses: ConversationStatus[] = ["completed-unclaimed", "abandoned", "released"];
-  const db = getDb();
-  if (db) {
-    const rows = await db
-      .select()
-      .from(conversationsTable)
-      .where(inArray(conversationsTable.status, statuses))
-      .orderBy(desc(conversationsTable.updatedAt));
-    return rows.map(rowToStored);
-  }
-  return [...inMemoryConversations.values()]
-    .filter((c) => (statuses as string[]).includes(c.status))
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-}
-
 /**
  * In-progress conversations that have gone quiet -- nobody claimed them and
  * the customer hasn't answered in a while. Feeds the abandon sweeper
