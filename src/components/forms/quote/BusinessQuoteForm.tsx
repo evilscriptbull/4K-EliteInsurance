@@ -37,7 +37,7 @@ export function BusinessQuoteForm() {
       ...parseQuoteContactFields(formData),
       businessName: formData.get("businessName"),
       businessAddress: formData.get("businessAddress"),
-      businessPhone: formData.get("businessPhone"),
+      businessPhone: formData.get("businessPhone") || undefined,
       coverageType: formData.get("coverageType"),
       businessEntity: formData.get("businessEntity"),
       operationsDescription: formData.get("operationsDescription"),
@@ -56,7 +56,7 @@ export function BusinessQuoteForm() {
       <QuoteContactFields fieldErrors={fieldErrors} />
       <TextField name="businessName" label="Name of Business" required error={fieldErrors.businessName?.[0]} />
       <TextField name="businessAddress" label="Business Address" required error={fieldErrors.businessAddress?.[0]} />
-      <TextField name="businessPhone" label="Business Phone" type="tel" required error={fieldErrors.businessPhone?.[0]} />
+      <TextField name="businessPhone" label="Business Phone" type="tel" error={fieldErrors.businessPhone?.[0]} />
       <div className="grid gap-5 sm:grid-cols-2">
         <SelectField
           name="coverageType"

@@ -1,7 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { answerStep, getFirstStep } from "@/lib/scripted-chat/engine";
 import { autoFlow } from "@/lib/scripted-chat/flows/auto";
+import { businessFlow } from "@/lib/scripted-chat/flows/business";
 import { scriptedFlows } from "@/lib/scripted-chat/flows";
+
+function walkFlow(flow: typeof autoFlow, answersInOrder: Array<{ stepId: string; answer: unknown }>) {
+  let answers: Record<string, unknown> = {};
+  let lastStatus = "";
+  for (const { stepId, answer } of answersInOrder) {
+    const result = answerStep(flow, stepId, answer, answers);
+    lastStatus = result.status;
+    if (result.status === "invalid") {
+      throw new Error(`Unexpected invalid answer at step "${stepId}": ${result.errors.join(", ")}`);
+    }
+    answers = result.answers;
+  }
+  return { answers, lastStatus };
+}
 
 describe("getFirstStep", () => {
   it("returns the flow's declared first step", () => {
@@ -103,6 +118,92 @@ describe("answerStep", () => {
     expect(answers).not.toHaveProperty("renewalDate");
     expect(answers).not.toHaveProperty("licenseNumber");
     expect(answers).not.toHaveProperty("notes");
+  });
+});
+
+describe("businessFlow", () => {
+  it("walks the non-contractors path, skipping the trade/certificates branch entirely", () => {
+    const { answers, lastStatus } = walkFlow(businessFlow, [
+      { stepId: "coverageType", answer: "general-liability" },
+      { stepId: "fullName", answer: "Jane Owner" },
+      { stepId: "phone", answer: "8651234567" },
+      { stepId: "smsConsent", answer: true },
+      { stepId: "email", answer: "jane@example.com" },
+      { stepId: "businessName", answer: "Acme Co" },
+      { stepId: "operationsDescription", answer: "General retail store" },
+      { stepId: "businessEntity", answer: "llc" },
+      { stepId: "yearsInBusiness", answer: "5" },
+      { stepId: "employees", answer: "10" },
+      { stepId: "annualPayroll", answer: "250k-500k" },
+      { stepId: "annualRevenue", answer: "500k-1m" },
+      { stepId: "usesSubcontractors", answer: false },
+      { stepId: "vehicleCount", answer: "2" },
+      { stepId: "currentCarrier", answer: "Travelers" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "liabilityCoverageRequested", answer: "1000000" },
+      { stepId: "businessAddress", answer: "123 Main St" },
+      { stepId: "businessPhone", answer: undefined },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      coverageType: "general-liability",
+      firstName: "Jane",
+      lastName: "Owner",
+      businessName: "Acme Co",
+      businessEntity: "llc",
+      yearsInBusiness: 5,
+      employees: 10,
+      annualPayroll: "250k-500k",
+      annualRevenue: "500k-1m",
+      usesSubcontractors: false,
+      vehicleCount: 2,
+      currentCarrier: "Travelers",
+      hasActivePolicy: true,
+      liabilityCoverageRequested: "1000000",
+      businessAddress: "123 Main St",
+    });
+    expect(answers).not.toHaveProperty("trade");
+    expect(answers).not.toHaveProperty("needsCertificates");
+    expect(answers).not.toHaveProperty("renewalDate");
+    expect(answers).not.toHaveProperty("businessPhone");
+  });
+
+  it("branches into trade/needsCertificates when coverageType is contractors", () => {
+    const { answers, lastStatus } = walkFlow(businessFlow, [
+      { stepId: "coverageType", answer: "contractors" },
+      { stepId: "fullName", answer: "Bob Builder" },
+      { stepId: "phone", answer: "8651234567" },
+      { stepId: "smsConsent", answer: false },
+      { stepId: "email", answer: "bob@example.com" },
+      { stepId: "businessName", answer: "Bob's Roofing" },
+      { stepId: "operationsDescription", answer: "Residential roofing" },
+      { stepId: "trade", answer: "roofing" },
+      { stepId: "needsCertificates", answer: true },
+      { stepId: "businessEntity", answer: "individual" },
+      { stepId: "yearsInBusiness", answer: "3" },
+      { stepId: "employees", answer: "4" },
+      { stepId: "annualPayroll", answer: "under-100k" },
+      { stepId: "annualRevenue", answer: "under-250k" },
+      { stepId: "usesSubcontractors", answer: true },
+      { stepId: "vehicleCount", answer: "1" },
+      { stepId: "currentCarrier", answer: "not-insured" },
+      { stepId: "renewalDate", answer: undefined },
+      { stepId: "liabilityCoverageRequested", answer: "other" },
+      { stepId: "businessAddress", answer: "456 Oak St" },
+      { stepId: "businessPhone", answer: undefined },
+      { stepId: "notes", answer: undefined },
+    ]);
+
+    expect(lastStatus).toBe("complete");
+    expect(answers).toMatchObject({
+      coverageType: "contractors",
+      trade: "roofing",
+      needsCertificates: true,
+      hasActivePolicy: false,
+    });
+    expect(answers.currentCarrier).toBeUndefined();
   });
 });
 

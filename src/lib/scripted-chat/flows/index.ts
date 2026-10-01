@@ -1,15 +1,16 @@
 import type { ScriptedFlow } from "@/lib/scripted-chat/types";
 import { autoFlow } from "@/lib/scripted-chat/flows/auto";
+import { businessFlow } from "@/lib/scripted-chat/flows/business";
 
 /**
- * Only the pilot flow is wired up so far (see docs/backlog.md — Scripted
- * Lead Warmer). The remaining 5 quoteFormFamilies slugs (collector-vehicle,
- * home, recreational, life, business) get their own ScriptedFlow config
- * here once the pilot is verified, each gated behind its own sign-off from
- * Chaz before going live, same as this one.
+ * The remaining 4 quoteFormFamilies slugs (collector-vehicle, home,
+ * recreational, life) get their own ScriptedFlow config here once built
+ * (see docs/backlog.md — Scripted Lead Warmer), each gated behind its own
+ * sign-off from Chaz before going live, same as auto and business.
  */
 export const scriptedFlows: Record<string, ScriptedFlow> = {
   auto: autoFlow,
+  business: businessFlow,
 };
 
 export function getScriptedFlow(slug: string): ScriptedFlow | undefined {
