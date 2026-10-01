@@ -121,6 +121,7 @@ export function conversationToPartialLead(
   answers: Record<string, unknown>,
   currentStepId: string | null | undefined,
   source: LeadSource = {},
+  channel: Lead["channel"] = "chat",
 ): Lead | null {
   const firstName = typeof answers.firstName === "string" ? answers.firstName : "";
   const lastName = typeof answers.lastName === "string" ? answers.lastName : "";
@@ -139,7 +140,7 @@ export function conversationToPartialLead(
   const draft: Omit<Lead, "leadScore" | "leadScoreTier"> = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
-    channel: "chat",
+    channel,
     completeness: "partial",
     line: resolvePartialLine(familySlug, answers),
     intent: buildPartialIntent(familySlug, answers),
