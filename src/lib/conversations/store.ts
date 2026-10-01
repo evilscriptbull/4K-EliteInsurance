@@ -266,6 +266,15 @@ export async function listIdleInProgress(olderThanMs: number): Promise<readonly 
   );
 }
 
+/**
+ * Caps the Live Queue's own query -- unlike the follow-up backlog (which
+ * can genuinely pile up and needs its own "show more"), this is inherently
+ * bounded to conversations actually active right now; a limit here is
+ * pure defense against an unbounded query, not a UX feature, so no "show
+ * more" affordance is needed for it.
+ */
+const LIVE_QUEUE_LIMIT = 100;
+
 /** In-progress and claimed conversations — the live-queue dashboard view. */
 export async function listLive(): Promise<readonly StoredConversation[]> {
   const db = getDb();
@@ -274,10 +283,12 @@ export async function listLive(): Promise<readonly StoredConversation[]> {
       .select()
       .from(conversationsTable)
       .where(inArray(conversationsTable.status, ["in-progress", "claimed"]))
-      .orderBy(desc(conversationsTable.updatedAt));
+      .orderBy(desc(conversationsTable.updatedAt))
+      .limit(LIVE_QUEUE_LIMIT);
     return rows.map(rowToStored);
   }
   return [...inMemoryConversations.values()]
     .filter((c) => c.status === "in-progress" || c.status === "claimed")
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, LIVE_QUEUE_LIMIT);
 }

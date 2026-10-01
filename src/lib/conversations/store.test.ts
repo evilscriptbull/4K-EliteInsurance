@@ -109,6 +109,11 @@ describe("listLive", () => {
     const live = await listLive();
     expect(live.some((c) => c.id === conversation.id)).toBe(false);
   });
+
+  it("caps the result at the live-queue limit", async () => {
+    await Promise.all(Array.from({ length: 101 }, () => createConversation(makeConversation("in-progress"))));
+    expect((await listLive()).length).toBeLessThanOrEqual(100);
+  });
 });
 
 describe("listIdleInProgress", () => {
