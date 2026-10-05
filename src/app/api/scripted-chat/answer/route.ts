@@ -146,7 +146,9 @@ export async function POST(request: Request) {
       ok: true,
       status: "complete",
       leadId: lead?.id,
+      line: lead?.line,
       leadScoreTier: lead?.leadScoreTier,
+      channel: lead?.channel,
       closingMessage: closingMessageContent,
     });
   } catch (error) {

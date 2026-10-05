@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from "@/lib/supabase/adminClient";
 import type { StoredMessage } from "@/lib/conversations/messages";
+import type { Lead } from "@/lib/schemas/lead";
 
 /**
  * Live-takeover control signals, broadcast alongside chat messages so the
@@ -7,7 +8,20 @@ import type { StoredMessage } from "@/lib/conversations/messages";
  */
 export type ConversationControlEvent =
   | { type: "takeover"; associateName: string }
-  | { type: "handoff"; reason: "released" | "completed" };
+  | {
+      type: "handoff";
+      reason: "released" | "completed";
+      // Set only when finalizeConversation produced a Lead, so the
+      // customer's widget can fire GA's lead_created (Phase 6.1).
+      line?: string;
+      leadScoreTier?: string;
+      channel?: string;
+    };
+
+/** The Lead fields a handoff event carries for the customer's GA lead_created (none if no Lead was produced). */
+export function handoffLeadFields(lead: Lead | null): { line?: string; leadScoreTier?: string; channel?: string } {
+  return lead ? { line: lead.line, leadScoreTier: lead.leadScoreTier, channel: lead.channel } : {};
+}
 
 /**
  * Delivers a message or control signal to everyone currently connected to
