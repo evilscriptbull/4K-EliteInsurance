@@ -1,5 +1,6 @@
 import { defineField, defineType } from "sanity";
 import { insuranceLines } from "@/lib/config/agency";
+import { landingPages } from "@/lib/config/landing-pages";
 import { formatLine } from "@/lib/format/insuranceLine";
 
 export const postType = defineType({
@@ -72,6 +73,16 @@ export const postType = defineType({
         },
       ],
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: "ctaLandingPage",
+      title: "Closing CTA target (optional)",
+      type: "string",
+      description:
+        "Which landing page the post's closing call-to-action links to. Leave empty to link to the general quote page.",
+      options: {
+        list: landingPages.map((page) => ({ title: page.label, value: page.slug })),
+      },
     }),
     defineField({
       name: "sourceUrl",
