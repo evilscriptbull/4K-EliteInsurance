@@ -37,7 +37,6 @@ function makeConversation(status: ConversationStatus): StoredConversation {
       createdAt: now,
       updatedAt: now,
       status,
-      messages: [],
       collectedFields: {},
       resumeConsent: false,
     },

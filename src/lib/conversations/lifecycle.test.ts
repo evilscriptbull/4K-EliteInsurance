@@ -25,7 +25,6 @@ function makeConversation(status: ConversationStatus, claimedBy: string | null =
       createdAt: now,
       updatedAt: now,
       status,
-      messages: [],
       collectedFields: {},
       resumeConsent: false,
     },
