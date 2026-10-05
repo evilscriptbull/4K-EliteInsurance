@@ -192,3 +192,20 @@ An internal, staff-only pre-call brief generated server-side the moment any Lead
 **Claim-time instant snapshot**: claiming a live conversation (`api/staff/claim`) also returns a transient, never-persisted `buildFallbackBrief` built from whatever's been answered so far — shown briefly in the dashboard while the page refreshes into the live-chat view, not a model call.
 
 **Real cost** (one `scripts/eval-agent-brief.mjs` run against the 6 family fixtures, 2026-10-01, model `claude-sonnet-5`): 1,864 input / 3,998 output tokens total across 6 briefs (281-331 in / 606-758 out per brief), prompt caching active from the second call on. At Sonnet 5's published per-token rate, that's roughly $0.01-0.02 per brief — all 6 fixtures returned `origin: "model"`, no guardrail rejections, and the one fixture with a phone number embedded in free text (`intent`) produced a brief with zero raw digits in the output.
+
+## Lead scoring (v2)
+
+`src/lib/leads/scoring.ts` — deterministic rules, **not** a learned model (that's the future AI Lead Warmer). Every point value lives in the exported `SCORE_WEIGHTS` table; `estimateLeadScore(lead, now)` sums the signals that fire on top of a base of 35 and clamps to 0-100, and `scoreSignals()` returns *which* signals fired (used by the tests to assert why a score is what it is). `scoreToTier` (`src/lib/schemas/lead.ts`) maps the score to a tier: ≥80 immediate, ≥60 same-day, ≥30 nurture.
+
+| Signal | Points |
+|---|---|
+| Phone provided | +15 |
+| SMS consent | +10 |
+| Priority line (`priorityLines`, `src/lib/config/agency.ts`) | +15 |
+| No active policy | +15 |
+| Renewal in 0-45 days / 46-90 days (exclusive; past dates score nothing) | +20 / +10 |
+| Commercial size (business leads: ≥10 employees, payroll ≥ $250K band, revenue ≥ $1M band, ≥3 vehicles) | +5 each, capped at +15 |
+| Paid source (`gclid`, or `utmMedium` of cpc/ppc/paid/paid-search/paid-social/display) | +5 |
+| Live chat (`channel === "chat-live"`) | +10 |
+
+**Scores are computed once, at Lead creation, and stored** — changing a weight does not rescore existing leads. **Changed in v2 (2026-10-05):** a plain general-liability lead with phone + consent now scores 75 (same-day) instead of v1's 85 (immediate) — "immediate" now needs an extra signal such as a renewal inside 45 days. The `marketing` tier is unreachable (base 35 ≥ 30), as it was under v1.
