@@ -11,7 +11,8 @@ const postProjection = `{
   insuranceLines,
   status,
   body,
-  sourceUrl
+  sourceUrl,
+  ctaLandingPage
 }`;
 
 /**
@@ -38,4 +39,15 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 export async function getAllPublishedSlugs(): Promise<string[]> {
   if (!sanityClient) return [];
   return sanityClient.fetch(`*[_type == "post" && status == "published"].slug.current`);
+}
+
+/**
+ * Slug + publishedAt only, no bodies -- what the sitemap needs without
+ * loading every post. Same published-only rule as every query here.
+ */
+export async function getPublishedPostIndex(): Promise<{ slug: string; publishedAt: string }[]> {
+  if (!sanityClient) return [];
+  return sanityClient.fetch(
+    `*[_type == "post" && status == "published"] | order(publishedAt desc) { "slug": slug.current, publishedAt }`,
+  );
 }

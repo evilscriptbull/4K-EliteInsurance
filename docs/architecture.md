@@ -209,3 +209,11 @@ An internal, staff-only pre-call brief generated server-side the moment any Lead
 | Live chat (`channel === "chat-live"`) | +10 |
 
 **Scores are computed once, at Lead creation, and stored** — changing a weight does not rescore existing leads. **Changed in v2 (2026-10-05):** a plain general-liability lead with phone + consent now scores 75 (same-day) instead of v1's 85 (immediate) — "immediate" now needs an extra signal such as a renewal inside 45 days. The `marketing` tier is unreachable (base 35 ≥ 30), as it was under v1.
+
+## SEO plumbing
+
+- **`src/app/sitemap.ts`** — static pages, the 12 landing pages, `/quote/{family}` for each family, and every published blog post (with `lastModified` from `publishedAt`, via `getPublishedPostIndex()`); regenerated hourly. **Deliberately excludes** `/quote/{family}/chat` (interactive tool pages with no standalone content — thin pages that would compete with the real landing/form pages), `/staff`, `/studio`, `/api`, and the noindex `/design` pages.
+- **`src/app/robots.ts`** — allow `/`, disallow `/studio`, `/staff`, `/api`, and point at the sitemap.
+- **Homepage JSON-LD** (`src/lib/seo/agencyJsonLd.ts`) — schema.org `InsuranceAgency` built *only* from `agency` config. Deliberately no ratings, review counts, price range, or opening hours. `sameAs` is every URL in `agency.social`, so whatever's in that config object is what search engines are told is the agency's presence.
+- **Blog post CTA** — optional `ctaLandingPage` field on the Sanity `post` type; `resolveBlogCta()` (`src/lib/seo/blogCta.ts`) validates it against `landingPages` and falls back to `/quote` for a missing or stale slug.
+- **Deploy gotcha:** the sitemap, robots, and JSON-LD all build their absolute URLs from `siteUrl()` (`NEXT_PUBLIC_SITE_URL`, else `https://{agency.primaryDomain}`). Set `NEXT_PUBLIC_SITE_URL` to the final production domain at DNS cutover, or they will advertise the Vercel preview URL.
