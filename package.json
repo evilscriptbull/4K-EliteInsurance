@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "eval:agent-brief": "tsx scripts/eval-agent-brief.mjs"
+    "eval:agent-brief": "tsx scripts/eval-agent-brief.mjs",
+    "report:weekly": "node scripts/report-weekly.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
