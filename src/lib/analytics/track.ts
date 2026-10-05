@@ -22,19 +22,47 @@ export function trackLandingPageView(line: InsuranceLine): void {
   sendGAEvent("event", "landing_page_view", { line });
 }
 
-export function trackLeadCreated(params: { line: InsuranceLine; leadScoreTier: Lead["leadScoreTier"] }): void {
+export function trackLeadCreated(params: {
+  line: InsuranceLine;
+  leadScoreTier: Lead["leadScoreTier"];
+  channel?: Lead["channel"];
+}): void {
   sendGAEvent("event", "lead_created", params);
 }
 
 /**
- * Convenience wrapper for the 6 quote forms: takes the raw /api/quote
- * success response (typed loosely since it crosses a fetch boundary) and
- * safely extracts line/leadScoreTier before tracking — avoids repeating the
- * same cast in every quote form component.
+ * Convenience wrapper for the 6 quote forms and the chat widget: takes the
+ * raw success response / control payload (typed loosely since it crosses a
+ * fetch or Realtime boundary) and safely extracts line/leadScoreTier (and
+ * channel, when present) before tracking — avoids repeating the same cast
+ * everywhere a Lead gets created.
  */
 export function trackLeadCreatedFromResponse(data: Record<string, unknown> | undefined): void {
   if (!data || typeof data.line !== "string" || typeof data.leadScoreTier !== "string") return;
-  trackLeadCreated({ line: data.line as InsuranceLine, leadScoreTier: data.leadScoreTier as Lead["leadScoreTier"] });
+  trackLeadCreated({
+    line: data.line as InsuranceLine,
+    leadScoreTier: data.leadScoreTier as Lead["leadScoreTier"],
+    ...(typeof data.channel === "string" ? { channel: data.channel as Lead["channel"] } : {}),
+  });
+}
+
+/*
+ * Quick Quote Chat events (Phase 6.1). `family` is the quote-form family
+ * slug (auto, business, ...). Deliberately no conversation id: that UUID is
+ * the capability token gating the conversation's Realtime channel, so it
+ * must never be handed to a third-party tool.
+ */
+
+export function trackChatStarted(params: { family: string }): void {
+  sendGAEvent("event", "chat_started", params);
+}
+
+export function trackChatStepAnswered(params: { family: string; stepId: string; turnIndex: number }): void {
+  sendGAEvent("event", "chat_step_answered", params);
+}
+
+export function trackChatTakenOver(params: { family: string }): void {
+  sendGAEvent("event", "chat_taken_over", params);
 }
 
 export function trackContactSubmitted(): void {

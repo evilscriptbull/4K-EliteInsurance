@@ -4,6 +4,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import {
+  trackChatStarted,
+  trackChatStepAnswered,
+  trackChatTakenOver,
+  trackLeadCreatedFromResponse,
+} from "@/lib/analytics/track";
 
 interface ClientStep {
   id: string;
@@ -123,6 +129,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
           ]);
           setStep(json.step);
           setStatus("active");
+          trackChatStarted({ family: familySlug });
         })
         .catch(() => setStatus("error"));
     }
@@ -218,10 +225,16 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
       })
       .on("broadcast", { event: "control" }, ({ payload }) => {
         if (payload.type === "takeover" && statusRef.current === "active") {
+          // Synchronous ref write so submitAnswer's "claimed" safety net
+          // (which can race this event) doesn't count the takeover twice.
+          statusRef.current = "live";
           setStatus("live");
+          trackChatTakenOver({ family: familySlug });
         } else if (payload.type === "handoff" && (statusRef.current === "active" || statusRef.current === "live")) {
           setStep(null);
           setStatus(payload.reason === "released" ? "ended" : "complete");
+          // Only present when finalizeConversation actually produced a Lead.
+          trackLeadCreatedFromResponse(payload);
         }
       })
       .subscribe((subscribeStatus) => {
@@ -233,7 +246,7 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [conversationId, familySlug]);
 
   useEffect(() => {
     // Scroll only the transcript panel itself, not scrollIntoView() — that
@@ -254,6 +267,9 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
 
   async function submitAnswer(rawAnswer: unknown, label: string) {
     if (!conversationId || !step) return;
+    // Answers submitted so far, counted from the transcript (which a resume
+    // rehydrates) rather than a local counter that would reset on refresh.
+    const turnIndex = transcript.filter((entry) => entry.role === "user").length + 1;
     setErrors([]);
     setTranscript((prev) => [...prev, { role: "user", content: label }]);
     setInputValue("");
@@ -280,11 +296,14 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
       return;
     }
     if (json.status === "next") {
+      trackChatStepAnswered({ family: familySlug, stepId: step.id, turnIndex });
       setStep(json.step);
       setTranscript((prev) => [...prev, { role: "assistant", content: json.step.prompt }]);
       return;
     }
     if (json.status === "complete") {
+      trackChatStepAnswered({ family: familySlug, stepId: step.id, turnIndex });
+      trackLeadCreatedFromResponse(json);
       setStep(null);
       setStatus("complete");
       setTranscript((prev) => [...prev, { role: "assistant", content: json.closingMessage }]);
@@ -295,6 +314,10 @@ export function ChatWidget({ familySlug }: { familySlug: string }) {
     // arrived yet, so the customer's answer never gets swallowed silently.
     setStep(null);
     if (json.status === "claimed") {
+      if (statusRef.current !== "live") {
+        statusRef.current = "live";
+        trackChatTakenOver({ family: familySlug });
+      }
       setStatus("live");
     } else {
       setStatus("complete");

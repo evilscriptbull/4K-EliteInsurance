@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Lead } from "@/lib/schemas/lead";
 import { verifyStaffRequest } from "@/lib/staff/verifyRequest";
 import { completeConversation } from "@/lib/conversations/store";
 import { finalizeConversation } from "@/lib/conversations/finalize";
 import { appendMessage } from "@/lib/conversations/messages";
-import { broadcastToConversation } from "@/lib/conversations/broadcast";
+import { broadcastToConversation, handoffLeadFields } from "@/lib/conversations/broadcast";
 
 // finalizeConversation (called below) schedules an after() that runs
 // generateAgentBrief + notifyAgentBrief -- needs more than Vercel's
@@ -40,11 +41,21 @@ export async function POST(request: Request) {
       content: "This conversation has been completed. Thanks for chatting with us!",
     });
     await broadcastToConversation(conversationId, { name: "message", payload: message });
+
+    // Finalized before the handoff is broadcast so the customer's widget
+    // can fire GA's lead_created from the event (Phase 6.1). A finalize
+    // failure must never block the handoff itself -- it just means no
+    // lead fields ride along.
+    let lead: Lead | null = null;
+    try {
+      lead = await finalizeConversation(conversationId, "completed-claimed");
+    } catch (error) {
+      console.error(`[staff/complete] finalize failed for conversation ${conversationId}`, error);
+    }
     await broadcastToConversation(conversationId, {
       name: "control",
-      payload: { type: "handoff", reason: "completed" },
+      payload: { type: "handoff", reason: "completed", ...handoffLeadFields(lead) },
     });
-    await finalizeConversation(conversationId, "completed-claimed");
   }
 
   return NextResponse.json({ ok: true, completed });
