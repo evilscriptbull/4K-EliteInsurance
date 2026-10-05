@@ -65,6 +65,7 @@ Derived from the roadmap in the handoff doc. Split MVP / Phase 2+ / Later, per t
 - [ ] Expand landing pages beyond MVP set: boat/motorcycle/RV (recreational, demoted from MVP per 2026-08-21 priority-lines data but still valuable collector-car cross-sell), personal life insurance (distinct from Group Life, which is in MVP), cyber, additional commercial verticals (restaurants — beyond the Phase 3 blog example — transportation, medical/professional offices, retail/service, automotive)
 - [ ] Expand local content beyond Knoxville/East TN into other licensed states, with genuinely differentiated (non-programmatic) content per state
 - [ ] Full policy/revenue attribution + CRO + lead-score refinement + campaign feedback loops
+  - [x] **Weekly funnel report — shipped 2026-10-05**: `npm run report:weekly` (`scripts/report-weekly.mjs`, read-only) prints leads / contacted / quoted / bound / summed premium for the last 7 and 30 days by source, landing page, line, and channel, joined to `lead_outcomes`. Definitions (cohort by lead creation date; "bound" counts reached-the-stage, premium counts only currently-`bound` outcomes) are in the script header. Still open here: policy/commission data flowing back from EZLynx, and a learned scoring model (v2 scoring is rules — see `docs/architecture.md`).
 
 ## Later / productization
 
