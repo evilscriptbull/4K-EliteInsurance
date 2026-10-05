@@ -39,7 +39,6 @@ function makeConversation(overrides: Partial<StoredConversation> & { collectedFi
       createdAt: now,
       updatedAt: now,
       status: "abandoned",
-      messages: [],
       collectedFields,
       currentStepId: currentStepId ?? undefined,
       resumeConsent: false,

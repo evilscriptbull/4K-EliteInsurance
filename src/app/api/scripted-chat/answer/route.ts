@@ -97,10 +97,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: "invalid", step: toClientStep(result.step), errors: result.errors });
   }
 
-  // The transcript lives in conversation_messages now, not
-  // conversation.state.messages (see src/lib/conversations/messages.ts) —
+  // The transcript lives in conversation_messages, not in the
+  // conversation's jsonb blob (see src/lib/conversations/messages.ts) —
   // appended as its own row per message, sequentially so ordering by
-  // createdAt is reliable, instead of overwriting the whole jsonb blob.
+  // createdAt is reliable.
   await appendMessage(conversationId, { role: "user", content: answerLabel ?? String(answer) });
 
   if (result.status === "next") {
