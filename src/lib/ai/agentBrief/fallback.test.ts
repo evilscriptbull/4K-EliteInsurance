@@ -148,7 +148,6 @@ describe("buildFallbackBrief", () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         status: "completed-unclaimed" as const,
-        messages: [],
         collectedFields: { personalOrCommercial: "commercial" },
         resumeConsent: false,
       },

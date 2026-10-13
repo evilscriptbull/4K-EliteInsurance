@@ -4,6 +4,7 @@ import { agency } from "@/lib/config/agency";
 import { quoteFormFamilies } from "@/lib/config/quote-forms";
 import { Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
+import { InsuranceLineIcon } from "@/components/icons/InsuranceLineIcon";
 
 export const metadata: Metadata = {
   title: "Get a Quote",
@@ -24,7 +25,8 @@ export default function QuotePage() {
         {quoteFormFamilies.map((family) => (
           <Link key={family.slug} href={`/quote/${family.slug}`}>
             <Card className="h-full bg-background text-foreground transition-shadow hover:shadow-md">
-              <h2 className="font-serif text-lg font-semibold text-brand-900">{family.label}</h2>
+              <InsuranceLineIcon line={family.applicableLines[0]} className="size-8 text-brand-800 duotone-accent-200" />
+              <h2 className="mt-3 font-serif text-lg font-semibold text-brand-900">{family.label}</h2>
               <p className="mt-2 text-sm text-brand-700">{family.description}</p>
             </Card>
           </Link>

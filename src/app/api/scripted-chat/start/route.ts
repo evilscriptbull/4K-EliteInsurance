@@ -82,15 +82,11 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const conversationId = crypto.randomUUID();
 
-  // messages: [] — the transcript lives in conversation_messages now, not
-  // this jsonb blob (see src/lib/conversations/messages.ts). Kept as an
-  // empty array only so this still satisfies ConversationState's type.
   const state: ConversationState = {
     id: conversationId,
     createdAt: now,
     updatedAt: now,
     status: "in-progress",
-    messages: [],
     currentStepId: firstStep.id,
     collectedFields: {},
     resumeConsent: false,

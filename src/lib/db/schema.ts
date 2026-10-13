@@ -154,8 +154,10 @@ export const conversations = pgTable("conversations", {
 /**
  * One row per chat message (customer answer, scripted bot prompt, human
  * associate message, or a system hand-off notice) — replaces storing the
- * transcript inside conversations.data.messages, which was a full-column
- * overwrite (updateConversation()) with no atomic append: a real race once
+ * transcript inside the conversations.data jsonb blob (a `messages` key that
+ * no longer exists in the schema; old rows may still carry one, ignored on
+ * parse), which was a full-column overwrite (updateConversation()) with no
+ * atomic append: a real race once
  * both a customer and an associate can write near-simultaneously (see the
  * live-takeover plan, docs/backlog.md). `authorAssociateId` is set only
  * when role === "associate"; null otherwise.

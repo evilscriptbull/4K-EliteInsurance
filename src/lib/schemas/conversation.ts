@@ -9,23 +9,6 @@ import { insuranceLines } from "@/lib/config/agency";
  */
 
 /**
- * @deprecated The transcript now lives in the conversation_messages table
- * (src/lib/conversations/messages.ts — appendMessage()/listMessages()),
- * one row per message, so it can be appended atomically and delivered live
- * via Realtime Broadcast. This schema is kept only so historical rows'
- * `data.messages` (written before this change) still validate; new code
- * must not read or write it — new conversations always persist `messages: []`.
- */
-export const messageRoleSchema = z.enum(["user", "assistant", "system"]);
-
-/** @deprecated See messageRoleSchema's note above. */
-export const messageSchema = z.object({
-  role: messageRoleSchema,
-  content: z.string(),
-  timestamp: z.iso.datetime(),
-});
-
-/**
  * Must match the status vocabulary used by the `conversations` table
  * (src/lib/db/schema.ts) and lib/conversations/store.ts's
  * ConversationStatus type — kept as literal string unions in both places
@@ -48,7 +31,10 @@ export const conversationStateSchema = z.object({
   status: conversationStatusSchema,
 
   line: z.enum(insuranceLines).optional(), // set once the prospect's line is identified
-  messages: z.array(messageSchema).default([]),
+  // The transcript is NOT part of this blob: it lives in the
+  // conversation_messages table (src/lib/conversations/messages.ts). Rows
+  // written before that move still carry a `messages` key in `data`; it's
+  // simply ignored on parse (this object is not .strict()).
 
   // The step id the server last confirmed this conversation was on — the
   // /answer route checks the client's submitted stepId against this instead
@@ -86,4 +72,3 @@ export const conversationStateSchema = z.object({
 });
 
 export type ConversationState = z.infer<typeof conversationStateSchema>;
-export type Message = z.infer<typeof messageSchema>;

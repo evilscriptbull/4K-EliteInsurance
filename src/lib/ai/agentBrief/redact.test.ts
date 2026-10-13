@@ -49,7 +49,6 @@ function makeConversation(overrides: Partial<StoredConversation> = {}): StoredCo
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: "in-progress",
-      messages: [],
       collectedFields: {},
       resumeConsent: false,
     },
