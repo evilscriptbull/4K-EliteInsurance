@@ -6,6 +6,7 @@ import { Section } from "@/components/ui/Section";
 import { Badge } from "@/components/ui/Badge";
 import { CTABanner } from "@/components/ui/CTABanner";
 import { formatLine } from "@/lib/format/insuranceLine";
+import { resolveBlogCta } from "@/lib/seo/blogCta";
 
 type PageParams = { params: Promise<{ slug: string }> };
 
@@ -39,6 +40,8 @@ export default async function BlogPostPage({ params }: PageParams) {
   const post = await getPostBySlug(slug);
   if (!post) notFound();
 
+  const cta = resolveBlogCta(post.ctaLandingPage);
+
   return (
     <>
       <Section background="brand">
@@ -70,8 +73,8 @@ export default async function BlogPostPage({ params }: PageParams) {
       <CTABanner
         heading="Have questions about your coverage?"
         body="Talk to a licensed independent agent — no obligation."
-        ctaLabel="Get a Quote"
-        ctaHref="/quote"
+        ctaLabel={cta.label}
+        ctaHref={cta.href}
       />
     </>
   );

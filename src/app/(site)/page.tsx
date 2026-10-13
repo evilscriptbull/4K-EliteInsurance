@@ -8,6 +8,7 @@ import { TeamGrid } from "@/components/marketing/TeamGrid";
 import { ReviewsLinkOut } from "@/components/marketing/ReviewsLinkOut";
 import { AiQuoteCta } from "@/components/marketing/AiQuoteCta";
 import { HomeChatLauncher } from "@/components/marketing/HomeChatLauncher";
+import { buildAgencyJsonLd, serializeJsonLd } from "@/lib/seo/agencyJsonLd";
 
 const trustStats = [
   { value: agency.yearsInBusinessClaim, label: "of collector-car expertise" },
@@ -18,6 +19,7 @@ const trustStats = [
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildAgencyJsonLd()) }} />
       <Section background="brand" className="py-20 md:py-28">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
           <div>

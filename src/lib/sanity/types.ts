@@ -30,4 +30,6 @@ export interface BlogPost {
   status: BlogPostStatus;
   body: PortableTextBlock[];
   sourceUrl?: string;
+  /** A `landingPages[].slug`; when set, the post's closing CTA links there instead of /quote. */
+  ctaLandingPage?: string;
 }
